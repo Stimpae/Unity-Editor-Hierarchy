@@ -1,10 +1,10 @@
 {
-  "name": "com.thundertale.editor-hierarchy",
+  "name": "com.pastime.editor-hierarchy",
   "version": "1.0.0",
   "displayName": "Unity Editor Hierarchy",
   "description": "",
   "unity": "2023.3.15f",
   "author": {
-    "name": "Thundertale"
+    "name": "pastime"
   }
 }

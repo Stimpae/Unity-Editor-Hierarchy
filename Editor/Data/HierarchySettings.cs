@@ -1,5 +1,7 @@
-﻿namespace Unity_Editor_Hierarchy.Editor {
-    public class HierarchySettings {
+﻿using UnityEditor;
+
+namespace Hierarchy.Data {
+    public class HierarchySettings : ScriptableSingleton<HierarchySettings> {
         
     }
 }

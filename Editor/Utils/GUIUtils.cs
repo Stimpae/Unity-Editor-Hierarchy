@@ -1,5 +1,5 @@
 ﻿namespace Hierarchy.Utils {
-    public class GUIUtils {
+    public static class GUIUtils {
         
     }
-}
+} 

@@ -1,5 +1,9 @@
-﻿namespace Unity_Editor_Hierarchy.Editor {
-    public static class HierarchyRowGUI {
+﻿using UnityEditor;
+
+namespace Hierarchy.GUI {
+    public class HierarchyRowGUI {
+        public HierarchyRowGUI(EditorWindow window) {
         
+        }
     }
 }
