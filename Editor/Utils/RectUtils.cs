@@ -6,7 +6,7 @@ namespace Hierarchy.Utils {
     /// <summary>
     /// Static utility class for Rect transformations with a fluent API, similar to CSS/USS layout manipulation.
     /// </summary>
-    public static class RectStyle
+    public static class RectUtils
     {
         // Positioning
         public static Rect SetPosition(this Rect rect, float x, float y) { rect.x = x; rect.y = y; return rect; }

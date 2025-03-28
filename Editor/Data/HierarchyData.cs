@@ -2,7 +2,6 @@ using UnityEditor;
 using UnityEngine;
 
 public class HierarchyData : ScriptableSingleton<HierarchyData> {
-    
     // Data needs to be assigned per scene, when we open a scene we need to load the data for that scene
     // we can use scene name as a key? or guid as names can change?? 
     
@@ -11,9 +10,6 @@ public class HierarchyData : ScriptableSingleton<HierarchyData> {
 }
 
 public class HierarchyGameObjectData {
-    public string name;
-    public Color color;
-    public bool isBold;
-    public bool isItalic;
-    public bool isUnderline;
+    // all the data for a game object in the hierarchy
+    // hide flags to lock
 }

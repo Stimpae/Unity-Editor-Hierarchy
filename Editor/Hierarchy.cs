@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Hierarchy.Data;
 using Hierarchy.GUI;
 using Hierarchy.Utils;
@@ -13,15 +14,15 @@ namespace Hierarchy {
     [InitializeOnLoad]
     public static class Hierarchy {
         public static HierarchyData HierarchyData { get; private set; }
-        public static HierarchyPaletteData PaletteData { get; private set; }
+        public static HierarchyPaletteData PaletteData { get; private set; }  
         private static Dictionary<EditorWindow, HierarchyGUI> HierarchyGuIs { get; } = new Dictionary<EditorWindow, HierarchyGUI>();
-        
-        // Private fields
         private static Type _sceneHierarchyWindowType;
         private static Type _hostViewType;
         private static Type _editorWindowDelegateType;
         private static EditorWindow _previousFocusedWindow;
         private static bool _initialized;
+        
+        private static HierarchyEventHandler _eventHandler;
         
         static Hierarchy() {
             EditorApplication.delayCall += Initialize;
@@ -31,7 +32,9 @@ namespace Hierarchy {
             if (_initialized) return;
             
             try {
-                CacheTypeReferences();
+                _eventHandler = new HierarchyEventHandler();
+                CacheReferences();
+                UnregisterEventHandlers();
                 RegisterEventHandlers();
                 LoadHierarchyData();
                 LoadPaletteData();
@@ -40,23 +43,20 @@ namespace Hierarchy {
                 _initialized = true;
             }
             catch (Exception ex) {
-                Debug.LogError($"Failed to initialize Enhanced Hierarchy: {ex.Message}\n{ex.StackTrace}");
+                Debug.LogError($"Failed to initialize Hierarchy: {ex.Message}\n{ex.StackTrace}");
                 UnregisterEventHandlers();
             }
         }
         
-        private static void CacheTypeReferences() {
+        private static void CacheReferences() {
             _sceneHierarchyWindowType = typeof(Editor).Assembly.GetType("UnityEditor.SceneHierarchyWindow");
-            if (_sceneHierarchyWindowType == null)
-                throw new NullReferenceException("Failed to find SceneHierarchyWindow type.");
-                
+            if (_sceneHierarchyWindowType == null) throw new NullReferenceException("Failed to find SceneHierarchyWindow type.");
+            
             _hostViewType = typeof(Editor).Assembly.GetType("UnityEditor.HostView");
-            if (_hostViewType == null)
-                throw new NullReferenceException("Failed to find HostView type.");
+            if (_hostViewType == null) throw new NullReferenceException("Failed to find HostView type.");
                 
             _editorWindowDelegateType = _hostViewType.GetNestedType("EditorWindowDelegate", ReflectionUtils.MAX_BINDING_FLAGS);
-            if (_editorWindowDelegateType == null)
-                throw new NullReferenceException("Failed to find EditorWindowDelegate type.");
+            if (_editorWindowDelegateType == null) throw new NullReferenceException("Failed to find EditorWindowDelegate type.");
         }
         
         private static void RegisterEventHandlers() {
@@ -71,12 +71,16 @@ namespace Hierarchy {
             EditorApplication.quitting -= HandleEditorQuitting;
         }
         
-        private static void HandleEditorQuitting() {
-            foreach (var hierarchyGUI in HierarchyGuIs) hierarchyGUI.Value.Clear();
+        private static void HandleEditorQuitting() { ;
+            foreach (var hierarchyGui in HierarchyGuIs.Values) {
+                hierarchyGui.Dispose();
+            }
+
+            _eventHandler = null;
             HierarchyGuIs.Clear();
             UnregisterEventHandlers();
         }
-        
+          
         private static void LoadHierarchyData() {
            // hierarchyData = HierarchyData.Load() ?? new HierarchyData();
             //Debug.Log("Hierarchy data loaded.");
@@ -99,7 +103,7 @@ namespace Hierarchy {
             var windows = GetAllHierarchyWindows().ToList();
             var windowsToRemove = HierarchyGuIs.Keys.Except(windows).ToList();
             foreach (var window in windowsToRemove) {
-                HierarchyGuIs[window].Clear();
+                HierarchyGuIs[window].Dispose();
                 HierarchyGuIs.Remove(window);
             }
         }
@@ -135,10 +139,8 @@ namespace Hierarchy {
             try {
                 var hostView = hierarchyWindow.GetMemberValue("m_Parent");
                 var onGUIMethod = typeof(Hierarchy).GetMethod(nameof(HandleGUI), ReflectionUtils.MAX_BINDING_FLAGS);
-                
                 var onGUIDelegate = onGUIMethod?.CreateDelegate(_editorWindowDelegateType, hierarchyWindow);
                 hostView.SetMemberValue("m_OnGUI", onGUIDelegate);
-                
                 hierarchyWindow.Repaint();
             }
             catch (Exception ex) {
@@ -150,11 +152,11 @@ namespace Hierarchy {
             if (!_initialized) return;
             
             try {
+                _eventHandler.ProcessEvent();
                 if (!HierarchyGuIs.TryGetValue(hierarchyWindow, out var gui)) {
-                    gui = new HierarchyGUI(hierarchyWindow);
+                    gui = new HierarchyGUI(hierarchyWindow, _eventHandler);
                     HierarchyGuIs[hierarchyWindow] = gui;
                 }
-                
                 gui.DrawHierarchyGUI();
             }
             catch (Exception exception) {

@@ -1,0 +1,15 @@
+.editor-toolbar-menu:hover {
+    background-color: var(--unity-colors-button-background-hover);
+}
+
+.editor-toolbar-menu:active,
+.editor-toolbar-menu.menu-open {
+    background-color: var(--unity-colors-button-background-hover_pressed);
+}
+
+.editor-toolbar-menu {
+    background-color: var(--unity-colors-button-background);
+}
+
+/* do not worry about errors in this class, certain IDEs do not recognize the custom properties */
+/* the custom properties are defined in the https://www.foundations.unity.com/fundamentals/color-palette */
