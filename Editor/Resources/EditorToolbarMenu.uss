@@ -8,7 +8,8 @@
 }
 
 .editor-toolbar-menu {
-    background-color: var(--unity-colors-button-background);
+    -unity-text-align: middle-center;
+    flex-direction: row-reverse;
 }
 
 /* do not worry about errors in this class, certain IDEs do not recognize the custom properties */

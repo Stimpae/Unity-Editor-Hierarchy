@@ -9,19 +9,27 @@ using UnityEngine.SceneManagement;
 using System.Linq;
 using System.Reflection;
 using Hierarchy.Libraries;
+using UnityEditor.Toolbars;
 
 
 namespace Hierarchy.GUI {
     public class HierarchyToolbarGUI : IDisposable {
         private readonly EditorWindow m_window;
         private EditorToolbarMenu m_gameObjectDropdown;
-        private EditorToolbarMenu m_favoriteDropdown;
-        private ToolbarPopupSearchField m_searchField;
-        private bool m_isSearchVisible;
-
+        
         private readonly Type m_hierarchyType;
         private readonly object m_sceneHierarchy;
         private readonly MethodInfo m_addCreateGameObjectItemsToMenuMethod;
+        
+        private Toolbar m_searchToolbar;
+        private bool m_isSearchVisible = true;
+        private ToolbarPopupSearchField m_searchField;
+        
+        private Toolbar m_favoritesToolbar;
+        private bool m_isFavoritesVisible = true;
+        
+        public bool IsSearchVisible => m_isSearchVisible;
+        public bool IsFavoritesVisible => m_isFavoritesVisible;
 
         public void Dispose() {
             
@@ -38,33 +46,48 @@ namespace Hierarchy.GUI {
             }
         }
 
-        public void CreateGUI(float toolbarHeight) {
+        public void CreateGUI(float toolbarHeight, float searchHeight, float favoritesHeight) {
             VisualElement root = m_window.rootVisualElement;
+            root.style.flexDirection = FlexDirection.Column;
 
-            Toolbar toolbar = new Toolbar {
+            Toolbar topToolbar = new Toolbar {
                 style = {
                     height = toolbarHeight,
-                    borderBottomColor = EditorColourLibrary.ToolbarButtonBackground,
-                   
+                    borderBottomWidth = 0,
                 }
             };
-            root.Add(toolbar);
-
-            //d_FolderFavorite On Icon
-            //Favorite@2x
+            root.Add(topToolbar);
+            
+            m_searchToolbar = new Toolbar {
+                style = {
+                    height = searchHeight,
+                    borderBottomWidth = 0,
+                }
+            };
+            root.Add(m_searchToolbar);
+            
+            m_favoritesToolbar = new Toolbar {
+                style = {
+                    height = favoritesHeight,
+                    borderBottomWidth = 0,
+                }
+            };
+            root.Add(m_favoritesToolbar);
+            
             m_gameObjectDropdown = new EditorToolbarMenu();
-            m_gameObjectDropdown.AddMenuIcon("d_Toolbar Plus", 18, 18);
+            m_gameObjectDropdown.AddMenuIcon("CreateAddNew", 16, 16);
             m_gameObjectDropdown.OnClick += ShowGameObjectDropdown;
             m_gameObjectDropdown.style.flexShrink = 0;
             m_gameObjectDropdown.tooltip = "Create GameObject";
 
-            m_favoriteDropdown = new EditorToolbarMenu();
+            /*m_favoriteDropdown = new EditorToolbarMenu();
             m_favoriteDropdown.AddMenuIcon("d_FolderFavorite On Icon", 16, 16);
             m_favoriteDropdown.style.flexShrink = 0;
             m_favoriteDropdown.tooltip = "View Favorites";
             
             // collapse button
             // toggle search field visibility
+            */
             
             m_searchField = new ToolbarPopupSearchField();
             m_searchField.RegisterValueChangedCallback(OnSearchValueChanged);
@@ -72,11 +95,36 @@ namespace Hierarchy.GUI {
             m_searchField.style.flexGrow = 1;
             
             // add these to the toolbar
-            toolbar.Add(m_gameObjectDropdown);
-            toolbar.Add(m_favoriteDropdown);
-            toolbar.Add(m_searchField);
+            topToolbar.Add(m_gameObjectDropdown);
+            topToolbar.Add(new EditorToolbarToggle() {
+                tooltip = "Toggle Search",
+                icon = (Texture2D)EditorGUIUtility.IconContent("d_FolderFavorite On Icon").image,
+            });
+            
+            topToolbar.Add(new EditorToolbarToggle() {
+                tooltip = "Toggle Favorites",
+                icon = (Texture2D)EditorGUIUtility.IconContent("d_FolderFavorite On Icon").image,
+            });
+            
+            m_searchToolbar.Add(m_searchField);
+            
+            Debug.Log("HierarchyToolbarGUI created");
         }
         
+        private void ToggleSearchToolbarVisibility() {
+            m_isSearchVisible = !m_isSearchVisible;
+            m_searchToolbar.style.display = m_isSearchVisible ? DisplayStyle.Flex : DisplayStyle.None;
+
+            if (!m_isSearchVisible && !string.IsNullOrEmpty(m_searchField.value)) {
+                m_searchField.value = "";
+                ClearHierarchySearch();
+            }
+        }
+        
+        private void ToggleFavoritesToolbarVisibility() {
+            m_isFavoritesVisible = !m_isFavoritesVisible;
+            m_favoritesToolbar.style.display = m_isFavoritesVisible ? DisplayStyle.Flex : DisplayStyle.None;
+        }
 
         private void ShowGameObjectDropdown() {
             try {
@@ -105,15 +153,7 @@ namespace Hierarchy.GUI {
             }
         }
         
-        private void ToggleSearchVisibility() {
-            m_isSearchVisible = !m_isSearchVisible;
-            m_searchField.style.display = m_isSearchVisible ? DisplayStyle.Flex : DisplayStyle.None;
-
-            if (!m_isSearchVisible && !string.IsNullOrEmpty(m_searchField.value)) {
-                m_searchField.value = "";
-                ClearHierarchySearch();
-            }
-        }
+  
         
         private void OnSearchValueChanged(ChangeEvent<string> evt) {
             string searchString = evt.newValue;

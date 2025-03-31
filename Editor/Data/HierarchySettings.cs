@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.Serialization;
 
 namespace Hierarchy.Data {
-    [FilePath("Assets/Editor/Hierarchy/HierarchySettings.asset", FilePathAttribute.Location.ProjectFolder)]
+    [FilePath("ProjectSettings/HierarchySettings", FilePathAttribute.Location.ProjectFolder)]
     public class HierarchySettings : ScriptableSingleton<HierarchySettings> {
         public List<ShortcutPreference> shortcuts = new List<ShortcutPreference>();
 

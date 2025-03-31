@@ -18,10 +18,6 @@ public class EditorToolbarMenu : ToolbarMenu {
         var styleSheet = Resources.Load<StyleSheet>("EditorToolbarMenu");
         if (styleSheet != null) styleSheets.Add(styleSheet);
         
-        style.unityTextAlign = TextAnchor.MiddleCenter;
-        style.flexDirection = FlexDirection.RowReverse;
-        style.color = EditorColourLibrary.ToolbarText;
-        
         this.SetBorderRadius(new VisualElementUtils.ElementLength4(2,2,2,2));
         this.SetBorderWidth(new VisualElementUtils.ElementFloat4(0,0,0,0));
         this.SetPadding(new VisualElementUtils.ElementLength4(0,3,0 ,3));
@@ -64,15 +60,13 @@ public class EditorToolbarMenu : ToolbarMenu {
     public void AddMenuIcon(string iconName, float width, float height) {
         var icon = EditorGUIUtility.IconContent(iconName).image;
         var iconElement = new Image {
-            image = icon,
-            style = {
-                width = width,
-                height = height
-            }
+            image = icon
         };
 
         m_iconContainer.Add(iconElement);
         m_iconContainer.style.display = DisplayStyle.Flex;
+        m_iconContainer.style.width = width;
+        m_iconContainer.style.height = height;
     }
     
     // factory to create a new menu item

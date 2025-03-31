@@ -1,7 +1,7 @@
 {
-  "name": "com.pastime.editor-hierarchy",
+  "name": "com.pastime.hierarchy",
   "version": "1.0.0",
-  "displayName": "Unity Editor Hierarchy",
+  "displayName": "Pastime Hierarchy",
   "description": "",
   "unity": "2023.3.15f",
   "author": {

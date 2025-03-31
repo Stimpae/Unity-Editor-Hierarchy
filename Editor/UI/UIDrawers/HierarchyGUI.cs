@@ -21,6 +21,10 @@ namespace Hierarchy.GUI {
         private HierarchyToolbarGUI m_toolbarGUI;
         
         private readonly Dictionary<int, Rect> m_instanceRects = new Dictionary<int, Rect>();
+        
+        private const float K_TOP_BAR_HEIGHT = 26f;
+        private const float K_SEARCH_BAR_HEIGHT = 20f;
+        private const float K_FAVORITES_BAR_HEIGHT = 24f;
 
         public HierarchyGUI(EditorWindow window, HierarchyEventHandler eventHandler) {
             m_window = window;
@@ -43,7 +47,7 @@ namespace Hierarchy.GUI {
             }, EventType.MouseDown, alt: true);
             
             // Create our custom header gui with toolkit
-            m_toolbarGUI.CreateGUI(27);
+            m_toolbarGUI.CreateGUI(K_TOP_BAR_HEIGHT, K_SEARCH_BAR_HEIGHT, K_FAVORITES_BAR_HEIGHT);
             
             m_shortcutHandler.RegisterPreferenceShortcut("Show Something", @event => {
                 Debug.Log("Show Something");
@@ -59,7 +63,10 @@ namespace Hierarchy.GUI {
             beforeAction?.Invoke();
 
             // Constants for positioning
-            float topGap = 26f;
+            var searchBarVisible = m_toolbarGUI.IsSearchVisible;
+            var favoritesVisible = m_toolbarGUI.IsFavoritesVisible;
+            float topGap = K_TOP_BAR_HEIGHT + (searchBarVisible ? K_SEARCH_BAR_HEIGHT : 0) + (favoritesVisible ? K_FAVORITES_BAR_HEIGHT : 0);
+            
             float defaultTopBarHeight = 20f;
             float topOffset = topGap - defaultTopBarHeight;
     
