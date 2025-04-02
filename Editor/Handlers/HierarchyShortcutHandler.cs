@@ -14,7 +14,7 @@ namespace Hierarchy {
     /// <summary>
     /// 
     /// </summary>
-    public class HierarchyShortcutHandler {
+    public class HierarchyShortcutHandler : IDisposable {
         private readonly HierarchyEventHandler m_eventHandler;
         
         private readonly Dictionary<string, Action<Event>> m_shortcuts = new Dictionary<string, Action<Event>>();
@@ -22,6 +22,12 @@ namespace Hierarchy {
         // Store registered handlers for potential unregistration
         private readonly Dictionary<string, (KeyCode None, EventType type, EMouseButtonType button, bool ctrl, bool shift, bool alt, Action<Event> handler)> m_registeredHandlers = new Dictionary<string, (KeyCode key, EventType type, EMouseButtonType button,
             bool ctrl, bool shift, bool alt, Action<Event> handler)>();
+        
+        public void Dispose() {
+            m_shortcuts.Clear();
+            m_registeredHandlers.Clear();
+            m_eventHandler.ClearAllHandlers();
+        }
         
         public HierarchyShortcutHandler(HierarchyEventHandler eventHandler) {
             m_eventHandler = eventHandler;

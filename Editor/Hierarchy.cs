@@ -11,42 +11,33 @@ using UnityEngine;
 
 
 namespace Hierarchy {
-    [InitializeOnLoad]
     public static class Hierarchy {
-        public static HierarchyData HierarchyData { get; private set; }
-        public static HierarchyPaletteData PaletteData { get; private set; }  
-        private static Dictionary<EditorWindow, HierarchyGUI> HierarchyGuIs { get; } = new Dictionary<EditorWindow, HierarchyGUI>();
+        private static Dictionary<EditorWindow, HierarchyGUI> HierarchyGuIs { get; set; }
         private static Type _sceneHierarchyWindowType;
         private static Type _hostViewType;
         private static Type _editorWindowDelegateType;
         private static EditorWindow _previousFocusedWindow;
-        private static bool _initialized;
         
         private static HierarchyEventHandler _eventHandler;
         
-        static Hierarchy() {
-            EditorApplication.delayCall += Initialize;
-        }
-        
+        [InitializeOnLoadMethod]
         private static void Initialize() {
-            if (_initialized) return;
+            HierarchyGuIs ??= new Dictionary<EditorWindow, HierarchyGUI>();
             
             try {
                 _eventHandler = new HierarchyEventHandler();
                 CacheReferences();
-                UnregisterEventHandlers();
+                UnregisterEventHandlers(); // Good that you're already doing this
                 RegisterEventHandlers();
-                LoadHierarchyData();
-                LoadPaletteData();
-                UpdateAllHierarchyWindows();
-                
-                _initialized = true;
             }
             catch (Exception ex) {
                 Debug.LogError($"Failed to initialize Hierarchy: {ex.Message}\n{ex.StackTrace}");
                 UnregisterEventHandlers();
             }
+            
+            EditorApplication.delayCall += UpdateAllHierarchyWindows;
         }
+        
         
         private static void CacheReferences() {
             _sceneHierarchyWindowType = typeof(Editor).Assembly.GetType("UnityEditor.SceneHierarchyWindow");
@@ -61,17 +52,26 @@ namespace Hierarchy {
         
         private static void RegisterEventHandlers() {
             EditorApplication.update += CheckFocusedWindow;
+            EditorApplication.update += UpdateAllHierarchyWindows; // temp
             EditorApplication.update += CheckWindowsToRemove;
+            AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
+            AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
             EditorApplication.quitting += HandleEditorQuitting;
         }
         
         private static void UnregisterEventHandlers() {
             EditorApplication.update -= CheckFocusedWindow;
             EditorApplication.update -= CheckWindowsToRemove;
+            EditorApplication.update -= UpdateAllHierarchyWindows; // temp
+            AssemblyReloadEvents.afterAssemblyReload -= OnAfterAssemblyReload;
+            AssemblyReloadEvents.beforeAssemblyReload -= OnBeforeAssemblyReload;
             EditorApplication.quitting -= HandleEditorQuitting;
         }
         
-        private static void HandleEditorQuitting() { ;
+        private static void HandleEditorQuitting() => CleanupHierarchy();
+        private static void OnBeforeAssemblyReload() => CleanupHierarchy();
+        
+        private static void CleanupHierarchy() {
             foreach (var hierarchyGui in HierarchyGuIs.Values) {
                 hierarchyGui.Dispose();
             }
@@ -80,16 +80,7 @@ namespace Hierarchy {
             HierarchyGuIs.Clear();
             UnregisterEventHandlers();
         }
-          
-        private static void LoadHierarchyData() {
-           // hierarchyData = HierarchyData.Load() ?? new HierarchyData();
-            //Debug.Log("Hierarchy data loaded.");
-        }
-        
-        private static void LoadPaletteData() {
-            //paletteData = HierarchyPaletteData.Load() ?? new HierarchyPaletteData();
-            //Debug.Log("Palette data loaded.");
-        }
+
         
         private static void CheckFocusedWindow() {
             var currentFocusedWindow = EditorWindow.focusedWindow;
@@ -106,6 +97,10 @@ namespace Hierarchy {
                 HierarchyGuIs[window].Dispose();
                 HierarchyGuIs.Remove(window);
             }
+        }
+        
+        private static void OnAfterAssemblyReload() {
+            EditorApplication.delayCall += UpdateAllHierarchyWindows;
         }
         
         private static bool IsHierarchyWindow(EditorWindow window) {
@@ -127,10 +122,18 @@ namespace Hierarchy {
         }
         
         private static void UpdateAllHierarchyWindows() {
-            var windows = GetAllHierarchyWindows().ToList();
-            foreach (var hierarchyWindow in windows) {
-                UpdateHierarchyWindow(hierarchyWindow);
-            }
+            // Schedule this after a frame to ensure hierarchy windows are ready
+            EditorApplication.delayCall += () => {
+                var windows = GetAllHierarchyWindows().ToList();
+                foreach (var hierarchyWindow in windows) {
+                    UpdateHierarchyWindow(hierarchyWindow);
+                }
+        
+                // Force a repaint on all hierarchy windows
+                foreach (var window in HierarchyGuIs.Keys) {
+                    window.Repaint();
+                }
+            };
         }
         
         private static void UpdateHierarchyWindow(EditorWindow hierarchyWindow) {
@@ -149,15 +152,15 @@ namespace Hierarchy {
         }
         
         private static void HandleGUI(EditorWindow hierarchyWindow) {
-            if (!_initialized) return;
-            
             try {
                 _eventHandler.ProcessEvent();
-                if (!HierarchyGuIs.TryGetValue(hierarchyWindow, out var gui)) {
+                if (!HierarchyGuIs.TryGetValue(hierarchyWindow, out var gui) || gui == null) {
+                    // Only create if null or missing
                     gui = new HierarchyGUI(hierarchyWindow, _eventHandler);
                     HierarchyGuIs[hierarchyWindow] = gui;
+                    Debug.Log($"Created new HierarchyGUI for window {hierarchyWindow.GetInstanceID()}");
                 }
-                gui.DrawHierarchyGUI();
+                gui.OnHierarchyGUI();
             }
             catch (Exception exception) {
                 if (exception.InnerException is ExitGUIException)

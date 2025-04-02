@@ -1,3 +1,15 @@
-editor-toolbar-button {
+.editor-toolbar-button:hover {
+    background-color: var(--unity-colors-button-background-hover);
+}
+
+.editor-toolbar-button:active{
+    background-color: var(--unity-colors-button-background-hover_pressed);
+}
+
+.editor-toolbar-button {
     -unity-text-align: middle-center;
+    border-radius: 2;
+    border-width: 0;
+    padding: 2 3 2 3;
+    margin: 3 1 3 1;
 }

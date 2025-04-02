@@ -30,6 +30,13 @@ public static class VisualElementUtils {
         }
     }
     
+    public static void SetBorderColor(this VisualElement element, Color color) {
+        element.style.borderBottomColor = color;
+        element.style.borderRightColor = color;
+        element.style.borderTopColor = color;
+        element.style.borderLeftColor = color;
+    }
+    
     public static void SetPadding(this VisualElement element, ElementLength4 elementLength) {
         element.style.paddingBottom = elementLength.bottomFloat;
         element.style.paddingRight = elementLength.rightFloat;

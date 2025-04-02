@@ -6,68 +6,57 @@ using UnityEngine;
 using UnityEngine.UIElements;
 
 public class EditorToolbarMenu : ToolbarMenu {
-    public event Action OnClick;
+    private Image m_iconImage;
 
-    private readonly VisualElement m_textContainer;
-    private readonly VisualElement m_iconContainer;
-    
-    public EditorToolbarMenu() {
-        // Add the USS class name & load the style sheet for pseudo states
-        // we do it this way as we do not have access to the pseudo states yet in ui toolkit.
+    /// <summary>
+    /// 
+    /// </summary>
+    public EditorToolbarMenu(Action onClick) {
         AddToClassList("editor-toolbar-menu");
         var styleSheet = Resources.Load<StyleSheet>("EditorToolbarMenu");
         if (styleSheet != null) styleSheets.Add(styleSheet);
         
-        this.SetBorderRadius(new VisualElementUtils.ElementLength4(2,2,2,2));
-        this.SetBorderWidth(new VisualElementUtils.ElementFloat4(0,0,0,0));
-        this.SetPadding(new VisualElementUtils.ElementLength4(0,3,0 ,3));
-        this.SetMargin(new VisualElementUtils.ElementLength4(3,0,3,3));
-        
-        m_textContainer = new VisualElement {
-            style = {
-                alignItems = Align.Center
-            }
-        };
-        
-        m_iconContainer = new VisualElement {
-            style = {
-                alignItems = Align.Center
-            }
-        };
-        
-        Add(m_textContainer);
-        Add(m_iconContainer);
-        
-        m_textContainer.style.display = DisplayStyle.None;
-        m_iconContainer.style.display = DisplayStyle.None;
-
         RegisterCallback<ClickEvent>((evt) => {
-            OnClick?.Invoke();
+            onClick?.Invoke();
         });
     }
-    
-    public void AddMenuText(string text) {
-        var textElement = new Label {
-            text = text,
-            style = {
-                unityTextAlign = TextAnchor.MiddleCenter
-            }
-        };
-        m_textContainer.Add(textElement);
-        m_textContainer.style.display = DisplayStyle.Flex;
-    }
-    
-    public void AddMenuIcon(string iconName, float width, float height) {
-        var icon = EditorGUIUtility.IconContent(iconName).image;
-        var iconElement = new Image {
-            image = icon
-        };
 
-        m_iconContainer.Add(iconElement);
-        m_iconContainer.style.display = DisplayStyle.Flex;
-        m_iconContainer.style.width = width;
-        m_iconContainer.style.height = height;
+    /// <summary>
+    /// Add an icon to the toggle
+    /// </summary>
+    /// <param name="iconName">Name of the icon from EditorGUIUtility.IconContent</param>
+    public void AddIcon(string iconName) {
+        if (m_iconImage == null) {
+            m_iconImage = new Image();
+            this.hierarchy.Insert(0, m_iconImage);
+        }
+
+        var icon = EditorGUIUtility.IconContent(iconName).image;
+        m_iconImage.image = icon;
     }
-    
-    // factory to create a new menu item
+
+    /// <summary>
+    /// Add a custom texture as an icon to the toggle
+    /// </summary>
+    /// <param name="texture">The texture to use as icon</param>
+    public void AddIcon(Texture2D texture) {
+        if (m_iconImage == null) {
+            m_iconImage = new Image();
+            this.hierarchy.Insert(0, m_iconImage);
+        }
+
+        m_iconImage.image = texture;
+    }
+
+    /// <summary>
+    /// Set icon size
+    /// </summary>
+    /// <param name="width">Width in pixels</param>
+    /// <param name="height">Height in pixels</param>
+    public void SetIconSize(float width, float height) {
+        if (m_iconImage != null) {
+            m_iconImage.style.width = width;
+            m_iconImage.style.height = height;
+        }
+    }
 }

@@ -36,7 +36,7 @@ namespace Hierarchy {
         /// <param name="position"></param>
         public virtual void ShowPopup(Vector2 position) {
             instance.ShowPopup();
-            instance.position = instance.position.SetPosition(position).SetSize(300, 200);
+            instance.position = instance.position.SetPosition(position).SetSize(200, 150);
             instance.Focus();
         }
         

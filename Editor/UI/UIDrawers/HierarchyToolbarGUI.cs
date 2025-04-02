@@ -9,30 +9,37 @@ using UnityEngine.SceneManagement;
 using System.Linq;
 using System.Reflection;
 using Hierarchy.Libraries;
+using Pastime.Hierarchy.GUI;
 using UnityEditor.Toolbars;
+using EditorToolbarToggle = Hierarchy.Elements.EditorToolbarToggle;
 
 
 namespace Hierarchy.GUI {
     public class HierarchyToolbarGUI : IDisposable {
         private readonly EditorWindow m_window;
-        private EditorToolbarMenu m_gameObjectDropdown;
-        
         private readonly Type m_hierarchyType;
         private readonly object m_sceneHierarchy;
         private readonly MethodInfo m_addCreateGameObjectItemsToMenuMethod;
+
+        private VisualElement m_favoritesBar;
+        private VisualElement m_toolbar;
         
-        private Toolbar m_searchToolbar;
-        private bool m_isSearchVisible = true;
         private ToolbarPopupSearchField m_searchField;
+        private EditorToolbarMenu m_gameObjectDropdown;
         
-        private Toolbar m_favoritesToolbar;
-        private bool m_isFavoritesVisible = true;
-        
-        public bool IsSearchVisible => m_isSearchVisible;
-        public bool IsFavoritesVisible => m_isFavoritesVisible;
+        // get the editor prefs for this instead
+        public bool IsFavoritesVisible => EditorPrefs.GetBool("Editor_FavoritesVisible_" + m_window.GetHashCode());
 
         public void Dispose() {
+            if (m_searchField != null) {
+                m_searchField.UnregisterValueChangedCallback(OnSearchValueChanged);
+                m_searchField = null;
+            }
             
+            m_favoritesElement = null;
+            m_toolbar = null;
+            m_favoritesBar = null;
+            m_gameObjectDropdown = null;
         }
 
         public HierarchyToolbarGUI(EditorWindow window) {
@@ -46,84 +53,124 @@ namespace Hierarchy.GUI {
             }
         }
 
-        public void CreateGUI(float toolbarHeight, float searchHeight, float favoritesHeight) {
+        private HierarchyBookmarksElement m_favoritesElement;
+        
+        public void CreateGUI(float toolbarHeight, float favoritesHeight) {
             VisualElement root = m_window.rootVisualElement;
             root.style.flexDirection = FlexDirection.Column;
 
-            Toolbar topToolbar = new Toolbar {
+            m_toolbar = new Toolbar() {
                 style = {
                     height = toolbarHeight,
-                    borderBottomWidth = 0,
+                    flexDirection = FlexDirection.Row,
+                    borderBottomWidth = 0
                 }
             };
-            root.Add(topToolbar);
-            
-            m_searchToolbar = new Toolbar {
+            root.Add(m_toolbar);
+
+            // Left container - fixed width, no grow/shrink
+            VisualElement leftContainer = new VisualElement() {
                 style = {
-                    height = searchHeight,
-                    borderBottomWidth = 0,
+                    flexGrow = 0,
+                    flexShrink = 0,
+                    flexBasis = StyleKeyword.Auto, // Use auto as the base size
+                    width = StyleKeyword.Auto, // Let content determine width
+                    justifyContent = Justify.FlexStart,
+                    alignSelf = Align.Center
                 }
             };
-            root.Add(m_searchToolbar);
-            
-            m_favoritesToolbar = new Toolbar {
+            m_toolbar.Add(leftContainer);
+
+            // Center container - should take available space and hug the right side
+            VisualElement centerContainer = new VisualElement() {
+                style = {
+                    flexGrow = 1, // Allow it to grow to fill available space
+                    flexShrink = 0, // Don't shrink below its minimum content size
+                    justifyContent = Justify.FlexStart, // Align content to left within container
+                }
+            };
+            m_toolbar.Add(centerContainer);
+
+            // Right container - fixed position on right
+            VisualElement rightContainer = new VisualElement() {
+                style = {
+                    flexGrow = 0,
+                    flexShrink = 0,
+                    width = StyleKeyword.Auto, // Let content determine width
+                    justifyContent = Justify.FlexEnd,
+                    flexDirection = FlexDirection.Row,
+                    marginRight = 2,
+                    marginLeft = 2,
+                }
+            };
+            m_toolbar.Add(rightContainer);
+
+            m_favoritesBar = new Toolbar {
                 style = {
                     height = favoritesHeight,
                     borderBottomWidth = 0,
                 }
             };
-            root.Add(m_favoritesToolbar);
+            root.Add(m_favoritesBar);
             
-            m_gameObjectDropdown = new EditorToolbarMenu();
-            m_gameObjectDropdown.AddMenuIcon("CreateAddNew", 16, 16);
-            m_gameObjectDropdown.OnClick += ShowGameObjectDropdown;
-            m_gameObjectDropdown.style.flexShrink = 0;
-            m_gameObjectDropdown.tooltip = "Create GameObject";
+            // Create the favorites element
+            m_favoritesElement = new HierarchyBookmarksElement {
+                style = {
+                    flexGrow = 1
+                }
+            };
 
-            /*m_favoriteDropdown = new EditorToolbarMenu();
-            m_favoriteDropdown.AddMenuIcon("d_FolderFavorite On Icon", 16, 16);
-            m_favoriteDropdown.style.flexShrink = 0;
-            m_favoriteDropdown.tooltip = "View Favorites";
-            
-            // collapse button
-            // toggle search field visibility
-            */
-            
+    
+            // Add to favorites bar
+            m_favoritesBar.Add(m_favoritesElement);
+
+            m_gameObjectDropdown = new EditorToolbarMenu(ShowGameObjectDropdown);
+            m_gameObjectDropdown.AddIcon("CreateAddNew");
+            m_gameObjectDropdown.SetIconSize(16,16);
+            m_gameObjectDropdown.tooltip = "Create GameObject";
+            leftContainer.Add(m_gameObjectDropdown);
+
             m_searchField = new ToolbarPopupSearchField();
             m_searchField.RegisterValueChangedCallback(OnSearchValueChanged);
             m_searchField.style.flexShrink = 1;
-            m_searchField.style.flexGrow = 1;
+            m_searchField.style.flexGrow = 1; // Allow search field to grow
+            m_searchField.style.width = new StyleLength(StyleKeyword.Auto); // Use auto width
+            centerContainer.Add(m_searchField);
             
-            // add these to the toolbar
-            topToolbar.Add(m_gameObjectDropdown);
-            topToolbar.Add(new EditorToolbarToggle() {
-                tooltip = "Toggle Search",
-                icon = (Texture2D)EditorGUIUtility.IconContent("d_FolderFavorite On Icon").image,
-            });
+            // Create the toggle
+            var searchToggle = new EditorToolbarToggle();
+            searchToggle.Initialize("Editor_SearchVisible_" + m_window.GetHashCode(),false, ToggleSearchToolbarVisibility);
+            searchToggle.AddIcon("d_SearchOverlay@2x");
+            rightContainer.Add(searchToggle);
             
-            topToolbar.Add(new EditorToolbarToggle() {
-                tooltip = "Toggle Favorites",
-                icon = (Texture2D)EditorGUIUtility.IconContent("d_FolderFavorite On Icon").image,
-            });
+            var favoritesButton = new EditorToolbarToggle();
+            favoritesButton.Initialize("Editor_FavoritesVisible_" + m_window.GetHashCode(),false, ToggleFavoritesToolbarVisibility);
+            favoritesButton.AddIcon("d_PreMatCube@2x");
+            favoritesButton.SetIconSize(16,16);
+            rightContainer.Add(favoritesButton);
             
-            m_searchToolbar.Add(m_searchField);
-            
-            Debug.Log("HierarchyToolbarGUI created");
+            // create collapse button
+            var collapseButton = new EditorToolbarButton(CollapseHierarchy);
+            collapseButton.AddIcon("d_Animation.NextKey@2x");
+            collapseButton.IconImage.style.rotate = new StyleRotate(new Rotate(new Angle(90)));
+            collapseButton.SetIconSize(16,16);
+            rightContainer.Add(collapseButton);
         }
         
-        private void ToggleSearchToolbarVisibility() {
-            m_isSearchVisible = !m_isSearchVisible;
-            m_searchToolbar.style.display = m_isSearchVisible ? DisplayStyle.Flex : DisplayStyle.None;
+        private void CollapseHierarchy() {
+        }
 
-            if (!m_isSearchVisible && !string.IsNullOrEmpty(m_searchField.value)) {
+        private void ToggleSearchToolbarVisibility(bool isVisible) {
+            
+            m_searchField.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            if (!isVisible && !string.IsNullOrEmpty(m_searchField.value)) {
                 m_searchField.value = "";
                 ClearHierarchySearch();
             }
         }
-        
-        private void ToggleFavoritesToolbarVisibility() {
-            m_isFavoritesVisible = !m_isFavoritesVisible;
-            m_favoritesToolbar.style.display = m_isFavoritesVisible ? DisplayStyle.Flex : DisplayStyle.None;
+
+        private void ToggleFavoritesToolbarVisibility(bool isVisible) {
+            m_favoritesBar.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private void ShowGameObjectDropdown() {
@@ -131,8 +178,11 @@ namespace Hierarchy.GUI {
                 if (m_hierarchyType == null) return;
                 if (!m_hierarchyType.IsInstanceOfType(m_window)) return;
 
-                var customParentForNewGameObjects = m_sceneHierarchy.GetFieldValue("m_CustomParentForNewGameObjects") as Transform;
-                var targetSceneHandle = customParentForNewGameObjects != null ? customParentForNewGameObjects.gameObject.scene.handle : 0;
+                var customParentForNewGameObjects =
+                    m_sceneHierarchy.GetFieldValue("m_CustomParentForNewGameObjects") as Transform;
+                var targetSceneHandle = customParentForNewGameObjects != null
+                    ? customParentForNewGameObjects.gameObject.scene.handle
+                    : 0;
                 var menu = new GenericMenu();
 
                 try {
@@ -152,9 +202,8 @@ namespace Hierarchy.GUI {
                 Debug.LogError($"Error showing GameObject dropdown: {ex.Message}\n{ex.StackTrace}");
             }
         }
-        
-  
-        
+
+
         private void OnSearchValueChanged(ChangeEvent<string> evt) {
             string searchString = evt.newValue;
 

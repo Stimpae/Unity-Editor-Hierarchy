@@ -9,7 +9,10 @@
 
 .editor-toolbar-menu {
     -unity-text-align: middle-center;
-    flex-direction: row-reverse;
+    border-radius: 2;
+    border-width: 0;
+    padding: 2 3 2 3;
+    margin: 2 2 2 2;
 }
 
 /* do not worry about errors in this class, certain IDEs do not recognize the custom properties */
