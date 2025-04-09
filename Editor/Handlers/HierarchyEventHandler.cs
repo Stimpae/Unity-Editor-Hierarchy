@@ -4,61 +4,54 @@ using UnityEngine;
 
 namespace Hierarchy {
     /// <summary>
-    /// 
+    /// Handles hierarchy-related events and input.
     /// </summary>
     public class HierarchyEventHandler {
-        private readonly Dictionary<EventType, Action<Event>> m_eventHandlers = new Dictionary<EventType, Action<Event>>();
-        private readonly Dictionary<KeyCode, Action<Event>> m_keyDownHandlers = new Dictionary<KeyCode, Action<Event>>();
-        private readonly Dictionary<KeyCode, Action<Event>> m_keyUpHandlers = new Dictionary<KeyCode, Action<Event>>();
-        private readonly Dictionary<int, Action<Event>> m_mouseDownHandlers = new Dictionary<int, Action<Event>>();
-        private readonly Dictionary<int, Action<Event>> m_mouseUpHandlers = new Dictionary<int, Action<Event>>();
-        private readonly Dictionary<MouseComboKey, Action<Event>> m_mouseComboHandlers = new Dictionary<MouseComboKey, Action<Event>>();
+        private readonly Dictionary<EventType, Action<Event>> eventHandlers = new();
+        private readonly Dictionary<KeyCode, Action<Event>> keyDownHandlers = new();
+        private readonly Dictionary<KeyCode, Action<Event>> keyUpHandlers = new();
+        private readonly Dictionary<int, Action<Event>> mouseDownHandlers = new();
+        private readonly Dictionary<int, Action<Event>> mouseUpHandlers = new();
+        private readonly Dictionary<MouseComboKey, Action<Event>> mouseComboHandlers = new();
 
         public Vector2 MousePosition { get; private set; }
         public bool EventUsed { get; private set; }
 
-        public struct MouseComboKey : IEquatable<MouseComboKey> {
-            public readonly EMouseButtonType button;
-            public readonly EventType type;
-            public readonly bool ctrl;
-            public readonly bool shift;
-            public readonly bool alt;
+        public readonly struct MouseComboKey : IEquatable<MouseComboKey> {
+            public readonly EMouseButtonType Button;
+            public readonly EventType Type;
+            public readonly bool Ctrl, Shift, Alt;
 
             public MouseComboKey(EMouseButtonType button, EventType type, bool ctrl, bool shift, bool alt) {
-                this.button = button;
-                this.type = type;
-                this.ctrl = ctrl;
-                this.shift = shift;
-                this.alt = alt;
+                Button = button;
+                Type = type;
+                Ctrl = ctrl;
+                Shift = shift;
+                Alt = alt;
             }
 
-            public bool Equals(MouseComboKey other) {
-                return button == other.button && type == other.type && ctrl == other.ctrl && shift == other.shift && alt == other.alt;
-            }
+            public bool Equals(MouseComboKey other) =>
+                Button == other.Button && Type == other.Type && Ctrl == other.Ctrl && Shift == other.Shift && Alt == other.Alt;
 
-            public override bool Equals(object obj) {
-                return obj is MouseComboKey other && Equals(other);
-            }
+            public override bool Equals(object obj) => obj is MouseComboKey other && Equals(other);
 
             public override int GetHashCode() {
-                unchecked {
-                    int hashCode = (int)button;
-                    hashCode = (hashCode * 397) ^ (int)type;
-                    hashCode = (hashCode * 397) ^ (ctrl ? 1 : 0);
-                    hashCode = (hashCode * 397) ^ (shift ? 1 : 0);
-                    hashCode = (hashCode * 397) ^ (alt ? 1 : 0);
-                    return hashCode;
-                }
+                int hash = (int)Button;
+                hash = (hash * 397) ^ (int)Type;
+                hash = (hash * 397) ^ (Ctrl ? 1 : 0);
+                hash = (hash * 397) ^ (Shift ? 1 : 0);
+                hash = (hash * 397) ^ (Alt ? 1 : 0);
+                return hash;
             }
         }
-        
-        public void ClearAllHandlers() { 
-            m_eventHandlers.Clear();
-            m_keyDownHandlers.Clear();
-            m_keyUpHandlers.Clear();
-            m_mouseDownHandlers.Clear();
-            m_mouseUpHandlers.Clear();
-            m_mouseComboHandlers.Clear();
+
+        public void ClearAllHandlers() {
+            eventHandlers.Clear();
+            keyDownHandlers.Clear();
+            keyUpHandlers.Clear();
+            mouseDownHandlers.Clear();
+            mouseUpHandlers.Clear();
+            mouseComboHandlers.Clear();
         }
 
         public bool ProcessEvent() {
@@ -67,162 +60,97 @@ namespace Hierarchy {
 
             EventUsed = false;
             MousePosition = e.mousePosition;
-            
-            if (m_eventHandlers.TryGetValue(e.type, out Action<Event> handler)) {
+
+            if (eventHandlers.TryGetValue(e.type, out var handler)) {
                 handler?.Invoke(e);
-                if (e.type != EventType.Repaint && e.type != EventType.Layout) {
-                    EventUsed = true;
-                }
+                if (e.type != EventType.Repaint && e.type != EventType.Layout) EventUsed = true;
             }
 
-            if (e.type == EventType.KeyDown && m_keyDownHandlers.TryGetValue(e.keyCode, out Action<Event> keyDownHandler)) {
+            if (e.type == EventType.KeyDown && keyDownHandlers.TryGetValue(e.keyCode, out var keyDownHandler)) {
                 keyDownHandler?.Invoke(e);
                 EventUsed = true;
             }
 
-            if (e.type == EventType.KeyUp && m_keyUpHandlers.TryGetValue(e.keyCode, out Action<Event> keyUpHandler)) {
+            if (e.type == EventType.KeyUp && keyUpHandlers.TryGetValue(e.keyCode, out var keyUpHandler)) {
                 keyUpHandler?.Invoke(e);
                 EventUsed = true;
             }
 
-            if (e.type == EventType.MouseDown && m_mouseDownHandlers.TryGetValue(e.button, out Action<Event> mouseDownHandler)) {
+            if (e.type == EventType.MouseDown && mouseDownHandlers.TryGetValue(e.button, out var mouseDownHandler)) {
                 mouseDownHandler?.Invoke(e);
                 EventUsed = true;
             }
 
-            if (e.type == EventType.MouseUp && m_mouseUpHandlers.TryGetValue(e.button, out Action<Event> mouseUpHandler)) {
+            if (e.type == EventType.MouseUp && mouseUpHandlers.TryGetValue(e.button, out var mouseUpHandler)) {
                 mouseUpHandler?.Invoke(e);
                 EventUsed = true;
             }
 
-            var mouseButton = (EMouseButtonType)e.button;
-            MouseComboKey comboKey = new MouseComboKey(mouseButton, e.type, e.control, e.shift, e.alt);
-
-            if ((e.type == EventType.MouseDown || e.type == EventType.MouseUp) && m_mouseComboHandlers.TryGetValue(comboKey, out Action<Event> mouseComboHandler)) {
+            var comboKey = new MouseComboKey((EMouseButtonType)e.button, e.type, e.control, e.shift, e.alt);
+            if ((e.type == EventType.MouseDown || e.type == EventType.MouseUp) && mouseComboHandlers.TryGetValue(comboKey, out var mouseComboHandler)) {
                 mouseComboHandler?.Invoke(e);
                 EventUsed = true;
             }
 
-            if (EventUsed) {
-                e.Use();
-            }
-
+            if (EventUsed) e.Use();
             return EventUsed;
         }
 
-        public void RegisterEventHandler(EventType eventType, Action<Event> handler) {
-            if (!m_eventHandlers.TryAdd(eventType, handler)) {
-                m_eventHandlers[eventType] += handler;
-            }
-        }
+        public void RegisterEventHandler(EventType eventType, Action<Event> handler) => AddHandler(eventHandlers, eventType, handler);
 
-        public void UnregisterEventHandler(EventType eventType, Action<Event> handler) {
-            if (m_eventHandlers.ContainsKey(eventType)) {
-                m_eventHandlers[eventType] -= handler;
-                if (m_eventHandlers[eventType] == null) {
-                    m_eventHandlers.Remove(eventType);
-                }
-            }
-        }
+        public void UnregisterEventHandler(EventType eventType, Action<Event> handler) => RemoveHandler(eventHandlers, eventType, handler);
 
-        public void RegisterKeyDownHandler(KeyCode keyCode, Action<Event> handler) {
-            if (!m_keyDownHandlers.TryAdd(keyCode, handler)) {
-                m_keyDownHandlers[keyCode] += handler;
-            }
-        }
+        public void RegisterKeyDownHandler(KeyCode keyCode, Action<Event> handler) => AddHandler(keyDownHandlers, keyCode, handler);
 
-        public void UnregisterKeyDownHandler(KeyCode keyCode, Action<Event> handler) {
-            if (m_keyDownHandlers.ContainsKey(keyCode)) {
-                m_keyDownHandlers[keyCode] -= handler;
-                if (m_keyDownHandlers[keyCode] == null) {
-                    m_keyDownHandlers.Remove(keyCode);
-                }
-            }
-        }
+        public void UnregisterKeyDownHandler(KeyCode keyCode, Action<Event> handler) => RemoveHandler(keyDownHandlers, keyCode, handler);
 
-        public void RegisterKeyUpHandler(KeyCode keyCode, Action<Event> handler) {
-            if (!m_keyUpHandlers.TryAdd(keyCode, handler)) {
-                m_keyUpHandlers[keyCode] += handler;
-            }
-        }
+        public void RegisterKeyUpHandler(KeyCode keyCode, Action<Event> handler) => AddHandler(keyUpHandlers, keyCode, handler);
 
-        public void UnregisterKeyUpHandler(KeyCode keyCode, Action<Event> handler) {
-            if (m_keyUpHandlers.ContainsKey(keyCode)) {
-                m_keyUpHandlers[keyCode] -= handler;
-                if (m_keyUpHandlers[keyCode] == null) {
-                    m_keyUpHandlers.Remove(keyCode);
-                }
-            }
-        }
+        public void UnregisterKeyUpHandler(KeyCode keyCode, Action<Event> handler) => RemoveHandler(keyUpHandlers, keyCode, handler);
 
-        public void RegisterMouseDownHandler(int button, Action<Event> handler) {
-            if (!m_mouseDownHandlers.TryAdd(button, handler)) {
-                m_mouseDownHandlers[button] += handler;
-            }
-        }
+        public void RegisterMouseDownHandler(int button, Action<Event> handler) => AddHandler(mouseDownHandlers, button, handler);
 
-        public void UnregisterMouseDownHandler(int button, Action<Event> handler) {
-            if (m_mouseDownHandlers.ContainsKey(button)) {
-                m_mouseDownHandlers[button] -= handler;
-                if (m_mouseDownHandlers[button] == null) {
-                    m_mouseDownHandlers.Remove(button);
-                }
-            }
-        }
+        public void UnregisterMouseDownHandler(int button, Action<Event> handler) => RemoveHandler(mouseDownHandlers, button, handler);
 
-        public void RegisterMouseUpHandler(int button, Action<Event> handler) {
-            if (!m_mouseUpHandlers.TryAdd(button, handler)) {
-                m_mouseUpHandlers[button] += handler;
-            }
-        }
+        public void RegisterMouseUpHandler(int button, Action<Event> handler) => AddHandler(mouseUpHandlers, button, handler);
 
-        public void UnregisterMouseUpHandler(int button, Action<Event> handler) {
-            if (m_mouseUpHandlers.ContainsKey(button)) {
-                m_mouseUpHandlers[button] -= handler;
-                if (m_mouseUpHandlers[button] == null) {
-                    m_mouseUpHandlers.Remove(button);
-                }
-            }
-        }
+        public void UnregisterMouseUpHandler(int button, Action<Event> handler) => RemoveHandler(mouseUpHandlers, button, handler);
 
         public void RegisterMouseComboHandler(EMouseButtonType button, EventType type, bool ctrl, bool shift, bool alt, Action<Event> handler) {
-            MouseComboKey key = new MouseComboKey(button, type, ctrl, shift, alt);
-
-            if (!m_mouseComboHandlers.TryAdd(key, handler)) {
-                m_mouseComboHandlers[key] += handler;
-            }
+            var key = new MouseComboKey(button, type, ctrl, shift, alt);
+            AddHandler(mouseComboHandlers, key, handler);
         }
 
         public void UnregisterMouseComboHandler(EMouseButtonType button, EventType type, bool ctrl, bool shift, bool alt, Action<Event> handler) {
-            MouseComboKey key = new MouseComboKey(button, type, ctrl, shift, alt);
+            var key = new MouseComboKey(button, type, ctrl, shift, alt);
+            RemoveHandler(mouseComboHandlers, key, handler);
+        }
 
-            if (m_mouseComboHandlers.ContainsKey(key)) {
-                m_mouseComboHandlers[key] -= handler;
-                if (m_mouseComboHandlers[key] == null) {
-                    m_mouseComboHandlers.Remove(key);
-                }
+        public bool IsMouseInRect(Rect rect) => rect.Contains(MousePosition);
+
+        public bool IsMouseDownInRect(Rect rect, int button = 0) =>
+            Event.current.type == EventType.MouseDown && Event.current.button == button && rect.Contains(MousePosition);
+
+        public bool IsMouseUpInRect(Rect rect, int button = 0) =>
+            Event.current.type == EventType.MouseUp && Event.current.button == button && rect.Contains(MousePosition);
+
+        public bool IsMouseComboInRect(Rect rect, int button, EventType type, bool ctrl, bool shift, bool alt) =>
+            Event.current.type == type && Event.current.button == button && Event.current.control == ctrl &&
+            Event.current.shift == shift && Event.current.alt == alt && rect.Contains(MousePosition);
+
+        public bool IsKeyCombo(KeyCode key, bool ctrl = false, bool shift = false, bool alt = false) =>
+            (Event.current.type == EventType.KeyDown || Event.current.type == EventType.KeyUp) &&
+            Event.current.keyCode == key && Event.current.control == ctrl && Event.current.shift == shift && Event.current.alt == alt;
+
+        private static void AddHandler<T>(Dictionary<T, Action<Event>> handlers, T key, Action<Event> handler) {
+            if (!handlers.TryAdd(key, handler)) handlers[key] += handler;
+        }
+
+        private static void RemoveHandler<T>(Dictionary<T, Action<Event>> handlers, T key, Action<Event> handler) {
+            if (handlers.ContainsKey(key)) {
+                handlers[key] -= handler;
+                if (handlers[key] == null) handlers.Remove(key);
             }
-        }
-
-        public bool IsMouseInRect(Rect rect) {
-            return rect.Contains(MousePosition);
-        }
-
-        public bool IsMouseDownInRect(Rect rect, int button = 0) {
-            return Event.current.type == EventType.MouseDown && Event.current.button == button && rect.Contains(MousePosition);
-        }
-
-        public bool IsMouseUpInRect(Rect rect, int button = 0) {
-            return Event.current.type == EventType.MouseUp && Event.current.button == button && rect.Contains(MousePosition);
-        }
-
-        public bool IsMouseComboInRect(Rect rect, int button, EventType type, bool ctrl, bool shift, bool alt) {
-            return Event.current.type == type && Event.current.button == button && Event.current.control == ctrl && Event.current.shift == shift && Event.current.alt == alt && rect.Contains(MousePosition);
-        }
-
-        public bool IsKeyCombo(KeyCode key, bool ctrl = false, bool shift = false, bool alt = false) {
-            if (Event.current.type != EventType.KeyDown && Event.current.type != EventType.KeyUp) return false;
-            return Event.current.keyCode == key && Event.current.control == ctrl && Event.current.shift == shift && Event.current.alt == alt;
         }
     }
 }

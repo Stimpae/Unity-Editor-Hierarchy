@@ -11,20 +11,11 @@ namespace Hierarchy.Elements {
         private System.Action<bool> m_onValueChanged;
         private Image m_iconImage;
 
-        public EditorToolbarToggle() {
+        public EditorToolbarToggle(string key, bool defaultValue = true, System.Action<bool> onValueChanged = null) {
             AddToClassList("editor-toolbar-toggle");
             var styleSheet = Resources.Load<StyleSheet>("EditorToolbarToggle");
             if (styleSheet != null) styleSheets.Add(styleSheet);
-        }
-
-        /// <summary>
-        /// Initialize the toggle with EditorPrefs persistence
-        /// </summary>
-        /// <param name="key">The key to use for storing in EditorPrefs</param>
-        /// <param name="defaultValue">Default value if no preference exists</param>
-        /// <param name="onValueChanged">Optional action to run when toggle value changes</param>
-        public void Initialize(string key, bool defaultValue = true, System.Action<bool> onValueChanged = null) {
-            if (m_initialized) return;
+            
             
             this.m_prefsKey = key;
             this.m_defaultValue = defaultValue;
@@ -41,10 +32,12 @@ namespace Hierarchy.Elements {
             if (onValueChanged != null) {
                 onValueChanged.Invoke(savedValue);
             }
-            
-            m_initialized = true;
         }
 
+        public sealed override void SetValueWithoutNotify(bool newValue) {
+            base.SetValueWithoutNotify(newValue);
+        }
+        
         private void OnToggleValueChanged(ChangeEvent<bool> evt) {
             if (!string.IsNullOrEmpty(m_prefsKey)) {
                 EditorPrefs.SetBool(m_prefsKey, evt.newValue);

@@ -2,9 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using Hierarchy.Data;
-using Hierarchy.GUI;
 using Hierarchy.Utils;
 using UnityEditor;
 using UnityEngine;
@@ -52,7 +49,6 @@ namespace Hierarchy {
         
         private static void RegisterEventHandlers() {
             EditorApplication.update += CheckFocusedWindow;
-            EditorApplication.update += UpdateAllHierarchyWindows; // temp
             EditorApplication.update += CheckWindowsToRemove;
             AssemblyReloadEvents.afterAssemblyReload += OnAfterAssemblyReload;
             AssemblyReloadEvents.beforeAssemblyReload += OnBeforeAssemblyReload;
@@ -62,7 +58,6 @@ namespace Hierarchy {
         private static void UnregisterEventHandlers() {
             EditorApplication.update -= CheckFocusedWindow;
             EditorApplication.update -= CheckWindowsToRemove;
-            EditorApplication.update -= UpdateAllHierarchyWindows; // temp
             AssemblyReloadEvents.afterAssemblyReload -= OnAfterAssemblyReload;
             AssemblyReloadEvents.beforeAssemblyReload -= OnBeforeAssemblyReload;
             EditorApplication.quitting -= HandleEditorQuitting;
@@ -127,11 +122,6 @@ namespace Hierarchy {
                 var windows = GetAllHierarchyWindows().ToList();
                 foreach (var hierarchyWindow in windows) {
                     UpdateHierarchyWindow(hierarchyWindow);
-                }
-        
-                // Force a repaint on all hierarchy windows
-                foreach (var window in HierarchyGuIs.Keys) {
-                    window.Repaint();
                 }
             };
         }

@@ -76,40 +76,5 @@ namespace Hierarchy {
                 m_registeredHandlers.Remove(id);
             }
         }
-        
-        /// <summary>
-        /// Register a shortcut handler and apply it from preferences
-        /// </summary>
-        public void RegisterPreferenceShortcut(string id, Action<Event> handler) {
-            var shortcut = HierarchySettings.instance.shortcuts.FirstOrDefault(s => s.id == id);
-            if (shortcut != null) ApplyPreferenceShortcut(shortcut, handler);
-            else Debug.LogWarning($"Shortcut with id {id} not found in preferences, make sure one is registered");
-        }
-        
-        /// <summary>
-        /// Apply a specific shortcut
-        /// </summary>
-        private void ApplyPreferenceShortcut(ShortcutPreference shortcut, Action<Event> handler) {
-            if (shortcut.key != KeyCode.None) {
-                // This is a keyboard shortcut
-                m_eventHandler.RegisterKeyDownHandler(shortcut.key, (e) => {
-                    if (e.control == shortcut.useCtrl && 
-                        e.shift == shortcut.useShift && 
-                        e.alt == shortcut.useAlt) {
-                        handler?.Invoke(e);
-                    }
-                });
-            } else if (shortcut.mouseButton >= 0) {
-                // This is a mouse shortcut
-                m_eventHandler.RegisterMouseComboHandler(
-                    shortcut.mouseButton,
-                    shortcut.eventType,
-                    shortcut.useCtrl,
-                    shortcut.useShift,
-                    shortcut.useAlt,
-                    handler
-                );
-            }
-        }
     }
 }

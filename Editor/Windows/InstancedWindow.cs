@@ -38,6 +38,7 @@ namespace Hierarchy {
             instance.ShowPopup();
             instance.position = instance.position.SetPosition(position).SetSize(200, 150);
             instance.Focus();
+            
         }
         
         public virtual void ShowWindow(string title) {

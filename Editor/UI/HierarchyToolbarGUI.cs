@@ -14,21 +14,21 @@ using UnityEditor.Toolbars;
 using EditorToolbarToggle = Hierarchy.Elements.EditorToolbarToggle;
 
 
-namespace Hierarchy.GUI {
+namespace Hierarchy {
     public class HierarchyToolbarGUI : IDisposable {
         private readonly EditorWindow m_window;
         private readonly Type m_hierarchyType;
         private readonly object m_sceneHierarchy;
         private readonly MethodInfo m_addCreateGameObjectItemsToMenuMethod;
 
-        private VisualElement m_favoritesBar;
+        private VisualElement m_bookmarksBar;
         private VisualElement m_toolbar;
         
         private ToolbarPopupSearchField m_searchField;
         private EditorToolbarMenu m_gameObjectDropdown;
         
         // get the editor prefs for this instead
-        public bool IsFavoritesVisible => EditorPrefs.GetBool("Editor_FavoritesVisible_" + m_window.GetHashCode());
+        public bool IsBookmarksVisible => EditorPrefs.GetBool("Editor_FavoritesVisible_" + m_window.GetHashCode());
 
         public void Dispose() {
             if (m_searchField != null) {
@@ -36,9 +36,9 @@ namespace Hierarchy.GUI {
                 m_searchField = null;
             }
             
-            m_favoritesElement = null;
+            m_bookmarksContainer = null;
             m_toolbar = null;
-            m_favoritesBar = null;
+            m_bookmarksBar = null;
             m_gameObjectDropdown = null;
         }
 
@@ -53,7 +53,7 @@ namespace Hierarchy.GUI {
             }
         }
 
-        private HierarchyBookmarksElement m_favoritesElement;
+        private HierarchyBookmarksContainer m_bookmarksContainer;
         
         public void CreateGUI(float toolbarHeight, float favoritesHeight) {
             VisualElement root = m_window.rootVisualElement;
@@ -87,6 +87,8 @@ namespace Hierarchy.GUI {
                     flexGrow = 1, // Allow it to grow to fill available space
                     flexShrink = 0, // Don't shrink below its minimum content size
                     justifyContent = Justify.FlexStart, // Align content to left within container
+                    height = 23,
+                    alignSelf = Align.Center,
                 }
             };
             m_toolbar.Add(centerContainer);
@@ -105,16 +107,16 @@ namespace Hierarchy.GUI {
             };
             m_toolbar.Add(rightContainer);
 
-            m_favoritesBar = new Toolbar {
+            m_bookmarksBar = new Toolbar {
                 style = {
                     height = favoritesHeight,
                     borderBottomWidth = 0,
                 }
             };
-            root.Add(m_favoritesBar);
+            root.Add(m_bookmarksBar);
             
             // Create the favorites element
-            m_favoritesElement = new HierarchyBookmarksElement {
+            m_bookmarksContainer = new HierarchyBookmarksContainer {
                 style = {
                     flexGrow = 1
                 }
@@ -122,7 +124,7 @@ namespace Hierarchy.GUI {
 
     
             // Add to favorites bar
-            m_favoritesBar.Add(m_favoritesElement);
+            m_bookmarksBar.Add(m_bookmarksContainer);
 
             m_gameObjectDropdown = new EditorToolbarMenu(ShowGameObjectDropdown);
             m_gameObjectDropdown.AddIcon("CreateAddNew");
@@ -137,21 +139,21 @@ namespace Hierarchy.GUI {
             m_searchField.style.width = new StyleLength(StyleKeyword.Auto); // Use auto width
             centerContainer.Add(m_searchField);
             
-            // Create the toggle
-            var searchToggle = new EditorToolbarToggle();
-            searchToggle.Initialize("Editor_SearchVisible_" + m_window.GetHashCode(),false, ToggleSearchToolbarVisibility);
-            searchToggle.AddIcon("d_SearchOverlay@2x");
+            // Create search button and save the state between hierarchy refreshes
+            var searchToggle = new EditorToolbarToggle("Editor_SearchVisible_" + m_window.GetHashCode(),false, ToggleSearchToolbarVisibility);
+            searchToggle.AddIcon("Search Icon");
+            searchToggle.SetIconSize(16,16);
             rightContainer.Add(searchToggle);
             
-            var favoritesButton = new EditorToolbarToggle();
-            favoritesButton.Initialize("Editor_FavoritesVisible_" + m_window.GetHashCode(),false, ToggleFavoritesToolbarVisibility);
-            favoritesButton.AddIcon("d_PreMatCube@2x");
+            // Create favourites button and save the state between hierarchy refreshes
+            var favoritesButton = new EditorToolbarToggle("Editor_FavoritesVisible_" + m_window.GetHashCode(),false, ToggleFavoritesToolbarVisibility);
+            favoritesButton.AddIcon("PreMatCube");
             favoritesButton.SetIconSize(16,16);
             rightContainer.Add(favoritesButton);
             
             // create collapse button
             var collapseButton = new EditorToolbarButton(CollapseHierarchy);
-            collapseButton.AddIcon("d_Animation.NextKey@2x");
+            collapseButton.AddIcon("Animation.NextKey");
             collapseButton.IconImage.style.rotate = new StyleRotate(new Rotate(new Angle(90)));
             collapseButton.SetIconSize(16,16);
             rightContainer.Add(collapseButton);
@@ -162,6 +164,8 @@ namespace Hierarchy.GUI {
 
         private void ToggleSearchToolbarVisibility(bool isVisible) {
             
+            
+            
             m_searchField.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
             if (!isVisible && !string.IsNullOrEmpty(m_searchField.value)) {
                 m_searchField.value = "";
@@ -170,7 +174,7 @@ namespace Hierarchy.GUI {
         }
 
         private void ToggleFavoritesToolbarVisibility(bool isVisible) {
-            m_favoritesBar.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            m_bookmarksBar.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
         }
 
         private void ShowGameObjectDropdown() {

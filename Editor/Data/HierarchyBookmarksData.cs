@@ -5,136 +5,215 @@ using UnityEngine;
 using UnityEditor.SceneManagement;
 using System.Linq;
 using Hierarchy;
+using UnityEngine.SceneManagement;
+using UnityEngine.Serialization;
 
 namespace Pastime.Hierarchy {
     
-    [FilePath("ProjectSettings/PastimeHierarchyBookmarks.asset", FilePathAttribute.Location.ProjectFolder)]
+    [FilePath("ProjectSettings/HierarchyBookmarks.asset", FilePathAttribute.Location.ProjectFolder)]
     public class HierarchyBookmarksData : ScriptableSingleton<HierarchyBookmarksData> {
         [Serializable]
         public class BookmarkData {
-            // Use the same stable ID system as HierarchyGameObjectData
-            public string stableID;      
+            public string stableID;      // Stable ID from PathUtils
             public string customName;    // Optional custom name for the bookmark
-            public string scenePath;     // Path to the scene this bookmark belongs to
-            public int objectInstanceID; // For runtime use, not serialized
+            public string scenePath;     // Scene path this bookmark belongs to (or prefab path)
             
             // Constructor for creating a new bookmark
             public BookmarkData(GameObject gameObject, string scene, string name = null) {
                 stableID = PathUtils.GetStableID(gameObject);
                 scenePath = scene;
                 customName = string.IsNullOrEmpty(name) ? gameObject.name : name;
-                objectInstanceID = gameObject.GetInstanceID();
             }
         }
         
-        [SerializeField]
-        private List<BookmarkData> m_bookmarks = new List<BookmarkData>();
-        
-        public List<BookmarkData> Bookmarks => m_bookmarks;
+        [SerializeField] private List<BookmarkData> bookmarks = new List<BookmarkData>();
+        public List<BookmarkData> Bookmarks => bookmarks;
         
         // Get bookmarks for the specified scene
         public List<BookmarkData> GetBookmarksForScene(string scenePath) {
-            return m_bookmarks.Where(b => b.scenePath == scenePath).ToList();
+            return bookmarks.Where(b => b.scenePath == scenePath).ToList();
+            
         }
         
-        // Get active scene bookmarks
-        public List<BookmarkData> GetActiveSceneBookmarks() {
-            string activeScene = EditorSceneManager.GetActiveScene().path;
-            return GetBookmarksForScene(activeScene);
+        // Get bookmarks for all currently loaded scenes
+        public List<BookmarkData> GetActiveScenesBookmarks() {
+            HashSet<string> loadedScenePaths = new HashSet<string>();
+            List<BookmarkData> bookmarks = new List<BookmarkData>();
+            
+            // Get paths for all loaded scenes
+            for (int i = 0; i < SceneManager.sceneCount; i++) {
+                Scene scene = SceneManager.GetSceneAt(i);
+                if (scene.isLoaded) {
+                    loadedScenePaths.Add(scene.path);
+                }
+            }
+            
+            // Also add prefab stage path if applicable
+            var prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
+            if (prefabStage != null) {
+                loadedScenePaths.Add(prefabStage.assetPath);
+            }
+            
+            // Get bookmarks for all loaded scenes
+            foreach (var scenePath in loadedScenePaths) {
+                bookmarks.AddRange(GetBookmarksForScene(scenePath));
+            }
+            
+            return bookmarks;
         }
         
         // Add a bookmark
         public void AddBookmark(GameObject gameObject, string customName = null) {
             if (gameObject == null) return;
             
-            // Get the scene path
-            string scenePath = gameObject.scene.path;
-            
-            // Check if bookmark already exists
             string stableID = PathUtils.GetStableID(gameObject);
-            if (m_bookmarks.Any(b => b.stableID == stableID)) {
+            string scenePath = DetermineScenePath(gameObject);
+            
+            // Check if bookmark already exists by stable ID
+            if (bookmarks.Any(b => b.stableID == stableID)) {
+                // Update the scene path if it's different (handles scene renames)
+                var existingBookmark = bookmarks.First(b => b.stableID == stableID);
+                if (existingBookmark.scenePath != scenePath) {
+                    existingBookmark.scenePath = scenePath;
+                    Save(true);
+                }
                 return; // Already exists
             }
             
             // Create and add the bookmark
             var bookmark = new BookmarkData(gameObject, scenePath, customName);
-            m_bookmarks.Add(bookmark);
-            
-            // Save changes
+            bookmarks.Add(bookmark);
             Save(true);
+        }
+        
+        // Determine the appropriate scene path for a GameObject
+        private string DetermineScenePath(GameObject gameObject) {
+            // For scene objects, use the scene path
+            string scenePath = gameObject.scene.path;
+            if (!string.IsNullOrEmpty(scenePath)) {
+                return scenePath;
+            }
+            
+            // For prefab assets in the project window
+            if (EditorUtility.IsPersistent(gameObject)) {
+                return AssetDatabase.GetAssetPath(gameObject);
+            }
+            
+            // For prefab stage objects
+            var prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
+            if (prefabStage != null && prefabStage.scene == gameObject.scene) {
+                return prefabStage.assetPath;
+            }
+            
+            // For prefab instances, find their scene
+            for (int i = 0; i < SceneManager.sceneCount; i++) {
+                Scene scene = SceneManager.GetSceneAt(i);
+                if (scene.isLoaded) {
+                    foreach (var root in scene.GetRootGameObjects()) {
+                        if (gameObject == root || gameObject.transform.IsChildOf(root.transform)) {
+                            return scene.path;
+                        }
+                    }
+                }
+            }
+            
+            // Fallback - use prefab asset path
+            var prefabAssetPath = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(gameObject);
+            if (!string.IsNullOrEmpty(prefabAssetPath)) {
+                return prefabAssetPath;
+            }
+            
+            return string.Empty;
         }
         
         // Remove a bookmark
         public void RemoveBookmark(string stableID) {
-            m_bookmarks.RemoveAll(b => b.stableID == stableID);
-            Save(true);
-        }
-        
-        // Remove bookmarks for a specific scene
-        public void RemoveBookmarksForScene(string scenePath) {
-            m_bookmarks.RemoveAll(b => b.scenePath == scenePath);
+            bookmarks.RemoveAll(b => b.stableID == stableID);
             Save(true);
         }
         
         // Rename a bookmark
         public void RenameBookmark(string stableID, string newName) {
-            var bookmark = m_bookmarks.FirstOrDefault(b => b.stableID == stableID);
+            var bookmark = bookmarks.FirstOrDefault(b => b.stableID == stableID);
             if (bookmark != null) {
                 bookmark.customName = newName;
                 Save(true);
             }
         }
         
-        // Resolve bookmark to GameObject - handles both scene and prefab objects
+        // Handle scene rename
+        public void HandleSceneRename(string oldScenePath, string newScenePath) {
+            bool needsSave = false;
+            
+            // Update all bookmarks with the old scene path
+            foreach (var bookmark in bookmarks) {
+                if (bookmark.scenePath == oldScenePath) {
+                    bookmark.scenePath = newScenePath;
+                    needsSave = true;
+                }
+            }
+            
+            if (needsSave) {
+                Save(true);
+            }
+        }
+        
+        // Resolve bookmark to GameObject
         public GameObject ResolveBookmark(BookmarkData bookmark) {
             if (bookmark == null) return null;
             
             try {
+                // Use PathUtils and find the referenced object by stableID
                 if (bookmark.stableID.StartsWith("scene:")) {
-                    // Parse the GlobalObjectId part from the stableID
+                    // Scene objects
                     string globalIdStr = bookmark.stableID.Substring(6);
                     if (GlobalObjectId.TryParse(globalIdStr, out GlobalObjectId id)) {
-                        // Check if we're in a valid scene context before resolving
-                        if (EditorSceneManager.GetActiveScene().isLoaded) {
-                            // Convert GlobalObjectId back to Object
-                            GameObject gameObject = GlobalObjectId.GlobalObjectIdentifierToObjectSlow(id) as GameObject;
-                            
-                            // Update the instance ID for quick access later
-                            if (gameObject != null) {
-                                bookmark.objectInstanceID = gameObject.GetInstanceID();
-                            }
-                            
-                            return gameObject;
-                        }
+                        return GlobalObjectId.GlobalObjectIdentifierToObjectSlow(id) as GameObject;
                     }
-                }
+                } 
                 else if (bookmark.stableID.StartsWith("prefab:")) {
-                    // Handle prefab references
+                    // Prefab objects
                     string[] parts = bookmark.stableID.Split(':');
                     if (parts.Length >= 3) {
                         string guid = parts[1];
                         int fileID = int.Parse(parts[2]);
                         
-                        // Get the asset path from GUID
+                        // Get asset path from GUID
                         string assetPath = AssetDatabase.GUIDToAssetPath(guid);
-                        if (!string.IsNullOrEmpty(assetPath)) {
-                            // Attempt to find the prefab instance in the current scene
-                            var rootGameObjects = EditorSceneManager.GetActiveScene().GetRootGameObjects();
-                            foreach (var root in rootGameObjects) {
-                                GameObject prefabRoot = PrefabUtility.GetOutermostPrefabInstanceRoot(root);
-                                if (prefabRoot != null) {
-                                    string prefabPath = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(prefabRoot);
-                                    if (prefabPath == assetPath) {
-                                        // We found a prefab instance with matching path, now find child with matching fileID
-                                        AssetDatabase.TryGetGUIDAndLocalFileIdentifier(prefabRoot, out _, out long localId);
-                                        if ((int)localId == fileID) return prefabRoot;
-                                        
-                                        // Search children
-                                        var allChildren = prefabRoot.GetComponentsInChildren<Transform>(true);
-                                        foreach (var child in allChildren) {
-                                            AssetDatabase.TryGetGUIDAndLocalFileIdentifier(child.gameObject, out _, out localId);
-                                            if ((int)localId == fileID) return child.gameObject;
-                                        }
+                        if (string.IsNullOrEmpty(assetPath)) return null;
+                        
+                        // Check if we're in prefab mode
+                        var prefabStage = PrefabStageUtility.GetCurrentPrefabStage();
+                        if (prefabStage != null && prefabStage.assetPath == assetPath) {
+                            // Find the object in the prefab stage
+                            var allTransforms = prefabStage.prefabContentsRoot.GetComponentsInChildren<Transform>(true);
+                            foreach (var transform in allTransforms) {
+                                if (GetLocalFileIDForPrefab(transform.gameObject, guid) == fileID) {
+                                    return transform.gameObject;
+                                }
+                            }
+                        }
+                        
+                        // Look for instances in all loaded scenes
+                        for (int sceneIdx = 0; sceneIdx < SceneManager.sceneCount; sceneIdx++) {
+                            Scene scene = SceneManager.GetSceneAt(sceneIdx);
+                            if (!scene.isLoaded) continue;
+                            
+                            foreach (var rootObj in scene.GetRootGameObjects()) {
+                                // Check if this is a prefab instance with the right asset path
+                                string rootPrefabPath = PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(rootObj);
+                                if (rootPrefabPath != assetPath) continue;
+                                
+                                // Check the root
+                                if (GetLocalFileIDForPrefab(rootObj, guid) == fileID) {
+                                    return rootObj;
+                                }
+                                
+                                // Check children
+                                var childrenTransforms = rootObj.GetComponentsInChildren<Transform>(true);
+                                foreach (var childTransform in childrenTransforms) {
+                                    if (GetLocalFileIDForPrefab(childTransform.gameObject, guid) == fileID) {
+                                        return childTransform.gameObject;
                                     }
                                 }
                             }
@@ -143,54 +222,65 @@ namespace Pastime.Hierarchy {
                 }
             }
             catch (Exception ex) {
-                // Silently catch errors during scene changes
-                // Debug.LogWarning($"Error resolving bookmark: {ex.Message}");
+                // Handle exceptions silently
+                Debug.LogWarning($"Error resolving bookmark: {ex.Message}");
             }
             
             return null;
+        }
+        
+        // Helper to get local file ID for prefab
+        private int GetLocalFileIDForPrefab(GameObject go, string guid) {
+            if (AssetDatabase.TryGetGUIDAndLocalFileIdentifier(go, out string objGuid, out long localId)) {
+                if (objGuid == guid) {
+                    return (int)localId;
+                }
+            }
+            
+            // For prefab instances, we need to get the corresponding source object
+            GameObject sourceObj = PrefabUtility.GetCorrespondingObjectFromSource(go);
+            if (sourceObj != null && 
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(sourceObj, out string sourceGuid, out long sourceLocalId)) {
+                if (sourceGuid == guid) {
+                    return (int)sourceLocalId;
+                }
+            }
+            
+            return -1;
         }
         
         // Clean up missing bookmarks
         public void CleanupMissingBookmarks() {
             bool hasChanges = false;
             var bookmarksToRemove = new List<BookmarkData>();
-            var loadedSceneGuids = new HashSet<string>();
             
-            // Collect loaded scene GUIDs
-            for (int i = 0; i < EditorSceneManager.sceneCount; i++) {
-                var scene = EditorSceneManager.GetSceneAt(i);
-                if (scene.isLoaded) {
-                    string guid = AssetDatabase.AssetPathToGUID(scene.path);
-                    if (!string.IsNullOrEmpty(guid)) {
-                        loadedSceneGuids.Add(guid);
-                    }
-                }
-            }
-            
-            foreach (var bookmark in m_bookmarks) {
-                bool shouldCheck = true;
-                
-                // For scene objects, only check if they belong to loaded scenes
-                if (bookmark.stableID.StartsWith("scene:")) {
-                    string globalIdStr = bookmark.stableID.Substring(6);
-                    if (GlobalObjectId.TryParse(globalIdStr, out GlobalObjectId globalId)) {
-                        string assetGuid = globalId.assetGUID.ToString();
-                        shouldCheck = loadedSceneGuids.Contains(assetGuid);
-                    }
-                }
-                
-                if (shouldCheck) {
-                    GameObject obj = ResolveBookmark(bookmark);
-                    if (obj == null) {
+            foreach (var bookmark in bookmarks) {
+                // Try to resolve the bookmark
+                GameObject go = ResolveBookmark(bookmark);
+                if (go == null) {
+                    // Don't remove prefab bookmarks if they're just not loaded currently
+                    if (bookmark.stableID.StartsWith("prefab:")) {
+                        string[] parts = bookmark.stableID.Split(':');
+                        if (parts.Length >= 2) {
+                            string guid = parts[1];
+                            string assetPath = AssetDatabase.GUIDToAssetPath(guid);
+                            
+                            // Only remove if the asset no longer exists
+                            if (string.IsNullOrEmpty(assetPath)) {
+                                bookmarksToRemove.Add(bookmark);
+                                hasChanges = true;
+                            }
+                        }
+                    } else {
                         bookmarksToRemove.Add(bookmark);
                         hasChanges = true;
                     }
                 }
             }
             
-            // Remove all invalid bookmarks
+            // Remove invalid bookmarks
             foreach (var bookmark in bookmarksToRemove) {
-                m_bookmarks.Remove(bookmark);
+                bookmarks.Remove(bookmark);
             }
             
             if (hasChanges) {

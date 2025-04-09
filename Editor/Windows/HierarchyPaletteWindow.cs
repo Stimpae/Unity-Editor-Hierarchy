@@ -9,7 +9,10 @@ namespace Hierarchy {
         public void CreateGUI() {
             VisualElement root = rootVisualElement;
             VisualElement parentRoot = rootVisualElement.parent;
-            parentRoot.SetBorderWidth(new VisualElementUtils.ElementFloat4(1,1,1,1));
+            parentRoot.style.borderBottomWidth = 1;
+            parentRoot.style.borderLeftWidth = 1;
+            parentRoot.style.borderRightWidth = 1;
+            parentRoot.style.borderTopWidth = 1;
         }
 
 

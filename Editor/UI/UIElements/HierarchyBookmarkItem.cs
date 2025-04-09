@@ -11,11 +11,12 @@ namespace Pastime.Hierarchy.GUI
     public class HierarchyBookmarkItem : VisualElement
     {
         private const string k_bookmarkItemClass = "hierarchy-bookmark-item";
-        private const string k_bookmarkItemSelectedClass = "hierarchy-bookmark-item-selected";
         
         private readonly HierarchyBookmarksData.BookmarkData m_bookmarkData;
         private readonly GameObject m_gameObject;
         private readonly Image m_iconElement;
+        private readonly Label m_labelElement;
+        private readonly VisualElement m_labelContainer;
         
         // Events
         public event Action<HierarchyBookmarksData.BookmarkData> OnSelected;
@@ -26,6 +27,10 @@ namespace Pastime.Hierarchy.GUI
             m_bookmarkData = bookmarkData;
             m_gameObject = gameObject;
             
+            // tag this as dynamic to avoid being cached
+            // this is important for the hierarchy to work properly
+            usageHints = UsageHints.DynamicTransform;
+            
             // Setup styles
             AddToClassList(k_bookmarkItemClass);
             
@@ -33,60 +38,40 @@ namespace Pastime.Hierarchy.GUI
             Texture2D icon = EditorGUIUtility.ObjectContent(gameObject, typeof(GameObject)).image as Texture2D;
             
             // Create icon element
-            m_iconElement = new Image();
-            m_iconElement.image = icon;
-            m_iconElement.scaleMode = ScaleMode.ScaleToFit;
-            m_iconElement.style.width = 16;
-            m_iconElement.style.height = 16;
+            m_iconElement = new Image {
+                image = icon,
+                scaleMode = ScaleMode.ScaleToFit,
+                style = {
+                    width = 16,
+                    height = 16
+                }
+            };
             Add(m_iconElement);
             
-            // Set tooltip to show the full name and path
-            tooltip = $"{bookmarkData.customName} ({GetGameObjectPath(gameObject)})";
+            // Create a container for the label that will animate
+            m_labelContainer = new VisualElement();
+            m_labelContainer.AddToClassList("hierarchy-bookmark-label-container");
+            Add(m_labelContainer);
             
+            // Create label with bookmark name (hidden by default, shown on hover)
+            m_labelElement = new Label(bookmarkData.customName);
+            m_labelElement.AddToClassList("hierarchy-bookmark-label");
+            m_labelContainer.Add(m_labelElement);
+         
             // Register event handlers
             RegisterCallback<ClickEvent>(OnClick);
             RegisterCallback<ContextClickEvent>(OnContextClickEvent);
         }
         
-        public void SetSelected(bool selected)
-        {
-            if (selected)
-            {
-                AddToClassList(k_bookmarkItemSelectedClass);
-            }
-            else
-            {
-                RemoveFromClassList(k_bookmarkItemSelectedClass);
-            }
-        }
-        
-        private void OnClick(ClickEvent evt)
-        {
+
+        private void OnClick(ClickEvent evt) {
             OnSelected?.Invoke(m_bookmarkData);
             evt.StopPropagation();
         }
         
-        private void OnContextClickEvent(ContextClickEvent evt)
-        {
+        private void OnContextClickEvent(ContextClickEvent evt) {
             OnContextMenu?.Invoke(m_bookmarkData);
             evt.StopPropagation();
-        }
-        
-        // Helper method to get GameObject path
-        private string GetGameObjectPath(GameObject gameObject)
-        {
-            if (gameObject == null) return string.Empty;
-            
-            string path = gameObject.name;
-            Transform parent = gameObject.transform.parent;
-            
-            while (parent != null)
-            {
-                path = $"{parent.name}/{path}";
-                parent = parent.parent;
-            }
-            
-            return path;
         }
     }
 }

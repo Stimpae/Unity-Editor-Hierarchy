@@ -1,37 +1,44 @@
 .hierarchy-bookmark-panel {
     flex-direction: row;
-    background-color: rgba(255, 255, 255, 0);
-    border-bottom-width: 1px;
-    border-bottom-color: #202020;
     overflow: hidden;
-}
-
-.hierarchy-bookmark-panel.hierarchy-bookmark-drop-active {
-    background-color: #454545;
 }
 
 .hierarchy-bookmark-item {
     flex-direction: row;
     align-items: center;
-    justify-content: center;
     border-radius: 3px;
     padding: 2px;
-    margin: 0 2 0 2;
-    height: 22px;
-    width: 22px;
+    margin: 2px;
     overflow: hidden;
 }
 
 .hierarchy-bookmark-item:hover {
-    background-color: var(--unity-colors-button-background-hover);
+    background-color: var(--unity-colors-button-background-pressed);
+    width: auto;
 }
 
-.hierarchy-bookmark-item-selected {
-    background-color: var(--unity-colors-button-background-hover_pressed);
+.hierarchy-bookmark-label-container {
+    overflow: hidden;
+    width: 0;
+    opacity: 0;
+    transition-property: width, opacity;
+    transition-duration: 0.2s;
+    transition-timing-function: ease-out;
 }
 
-.hierarchy-bookmark-item-selected:hover {
-    background-color: var(--unity-colors-button-background-hover_pressed);
+.hierarchy-bookmark-item:hover .hierarchy-bookmark-label-container {
+    width: 80px;
+    opacity: 1;
+    margin-left: 4px;
+}
+
+.hierarchy-bookmark-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -unity-text-align: middle-left;
+    color: var(--unity-colors-label-text);
+    font-size: 12px;
 }
 
 /* Completely hide scrollers */

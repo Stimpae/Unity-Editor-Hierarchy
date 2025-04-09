@@ -5,11 +5,12 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UIElements;
 using System.Linq;
+using UnityEngine.SceneManagement;
 using PopupWindow = UnityEditor.PopupWindow;
 
 namespace Pastime.Hierarchy.GUI
 {
-    public class HierarchyBookmarksElement : VisualElement, IDisposable
+    public class HierarchyBookmarksContainer : VisualElement, IDisposable
     {
         // UI elements
         private ScrollView m_scrollView;
@@ -17,16 +18,17 @@ namespace Pastime.Hierarchy.GUI
         
         // Style classes
         private const string k_bookmarkItemClass = "hierarchy-bookmark-item";
-        private const string k_bookmarkItemSelectedClass = "hierarchy-bookmark-item-selected";
         private const string k_bookmarksPanelClass = "hierarchy-bookmark-panel";
+        
         
         // Callback for when a bookmark is selected
         public event Action<GameObject> OnBookmarkSelected;
 
-        public HierarchyBookmarksElement()
+        public HierarchyBookmarksContainer()
         {
             // Load the stylesheet
             styleSheets.Add(Resources.Load<StyleSheet>("HierarchyBookmarks"));
+            usageHints = UsageHints.DynamicTransform;
             
             // Setup styles
             AddToClassList(k_bookmarksPanelClass);
@@ -121,9 +123,9 @@ namespace Pastime.Hierarchy.GUI
         // Handle drag updated
         private void OnDragUpdated(DragUpdatedEvent evt)
         {
-            // Only accept GameObjects from the hierarchy
+            // Accept GameObjects from both the hierarchy and the project window
             bool isValidDrag = DragAndDrop.objectReferences
-                .Any(obj => obj is GameObject go && !EditorUtility.IsPersistent(go));
+                .Any(obj => obj is GameObject);
             
             DragAndDrop.visualMode = isValidDrag ? 
                 DragAndDropVisualMode.Copy : DragAndDropVisualMode.Rejected;
@@ -166,12 +168,6 @@ namespace Pastime.Hierarchy.GUI
             // Create the bookmark item using the dedicated class
             var item = new HierarchyBookmarkItem(bookmark, gameObject);
             
-            // Set selected state if this is the current highlighted object
-            if (m_currentHighlighted == gameObject)
-            {
-                item.SetSelected(true);
-            }
-            
             // Register event handlers
             item.OnSelected += SelectBookmark;
             item.OnContextMenu += ShowContextMenu;
@@ -183,46 +179,13 @@ namespace Pastime.Hierarchy.GUI
         private void ShowContextMenu(HierarchyBookmarksData.BookmarkData bookmark)
         {
             GenericMenu menu = new GenericMenu();
-            
-            // Add menu item to rename bookmark
-            menu.AddItem(new GUIContent("Rename..."), false, () => {
-                RenameBookmarkDialog(bookmark);
-            });
-            
-            // Add menu item to remove from bookmarks
             menu.AddItem(new GUIContent("Remove from Bookmarks"), false, () => {
                 RemoveBookmark(bookmark);
             });
-            
-            // Add menu item to ping/find in hierarchy
-            menu.AddItem(new GUIContent("Find in Hierarchy"), false, () => {
-                GameObject go = HierarchyBookmarksData.instance.ResolveBookmark(bookmark);
-                if (go != null)
-                {
-                    EditorGUIUtility.PingObject(go);
-                }
-            });
-            
             menu.ShowAsContext();
         }
         
-        // Show rename dialog
-        private void RenameBookmarkDialog(HierarchyBookmarksData.BookmarkData bookmark)
-        {
-            // Create popup field for renaming
-            string currentName = bookmark.customName;
-            PopupWindowContent content = new BookmarkRenamePopup(currentName, (newName) => {
-                if (!string.IsNullOrEmpty(newName) && newName != currentName)
-                {
-                    HierarchyBookmarksData.instance.RenameBookmark(bookmark.stableID, newName);
-                    RefreshBookmarksList();
-                }
-            });
-            
-            // Show popup
-            PopupWindow.Show(new Rect(Event.current.mousePosition, Vector2.zero), content);
-        }
-
+        
         // Remove a bookmark
         private void RemoveBookmark(HierarchyBookmarksData.BookmarkData bookmark)
         {
@@ -266,8 +229,8 @@ namespace Pastime.Hierarchy.GUI
             // Clear the current list
             m_scrollView.Clear();
             
-            // Get bookmarks for the current scene
-            var activeSceneBookmarks = HierarchyBookmarksData.instance.GetActiveSceneBookmarks();
+            // Get bookmarks for active scenes
+            var activeSceneBookmarks = HierarchyBookmarksData.instance.GetActiveScenesBookmarks();
             
             // Create visual elements for each bookmark
             foreach (var bookmark in activeSceneBookmarks)
@@ -289,57 +252,24 @@ namespace Pastime.Hierarchy.GUI
             }
         }
 
+        // Called when a scene is saved (possible rename)
+        private void OnSceneSaved(Scene scene)
+        {
+            // Delay the refresh until next frame to avoid issues during scene transitions
+            EditorApplication.delayCall += () => {
+                if (this != null) {
+                    RefreshBookmarksList();
+                }
+            };
+        }
+
         // Clean up when disposed
         public void Dispose()
         {
             EditorApplication.hierarchyChanged -= OnHierarchyChanged;
             EditorSceneManager.sceneOpened -= OnSceneOpened;
             EditorSceneManager.sceneClosed -= OnSceneClosed;
-        }
-    }
-    
-    // Popup for renaming bookmarks
-    public class BookmarkRenamePopup : PopupWindowContent
-    {
-        private string m_name;
-        private Action<string> m_onRename;
-        
-        public BookmarkRenamePopup(string currentName, Action<string> onRename)
-        {
-            m_name = currentName;
-            m_onRename = onRename;
-        }
-        
-        public override Vector2 GetWindowSize()
-        {
-            return new Vector2(200, 60);
-        }
-        
-        public override void OnGUI(Rect rect)
-        {
-            EditorGUILayout.LabelField("Rename Bookmark", EditorStyles.boldLabel);
-            
-            EditorGUI.BeginChangeCheck();
-            m_name = EditorGUILayout.TextField("Name", m_name);
-            
-            EditorGUILayout.BeginHorizontal();
-            GUILayout.FlexibleSpace();
-            
-            if (GUILayout.Button("Cancel", GUILayout.Width(70)))
-            {
-                editorWindow.Close();
-            }
-            
-            if (GUILayout.Button("Rename", GUILayout.Width(70)))
-            {
-                if (!string.IsNullOrEmpty(m_name))
-                {
-                    m_onRename(m_name);
-                    editorWindow.Close();
-                }
-            }
-            
-            EditorGUILayout.EndHorizontal();
+            EditorSceneManager.sceneSaved -= OnSceneSaved;
         }
     }
 }

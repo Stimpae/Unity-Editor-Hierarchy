@@ -3,10 +3,12 @@
 }
 
 .editor-toolbar-button:active{
-    background-color: var(--unity-colors-button-background-hover_pressed);
+    background-color: var(--unity-colors-button-background-pressed);
 }
 
 .editor-toolbar-button {
+    align-items: center;
+    justify-content: center;
     -unity-text-align: middle-center;
     border-radius: 2;
     border-width: 0;

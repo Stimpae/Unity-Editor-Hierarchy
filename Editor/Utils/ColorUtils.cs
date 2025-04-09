@@ -6,7 +6,7 @@ namespace Hierarchy.Libraries {
     /// Contains all the colours used in the editor.
     /// Found @ https://www.foundations.unity.com/fundamentals/color-palette
     /// </summary>
-    public static class EditorColourLibrary {
+    public static class ColorUtils {
         private static class DarkThemeColours {
             // Backgrounds
             public static readonly Color Background1 = HexToRgba("#202020");       // Window background
@@ -24,15 +24,15 @@ namespace Hierarchy.Libraries {
             
             // Buttons
             public static readonly Color ButtonNormal = HexToRgba("#585858");      // Normal button
-            public static readonly Color ButtonHover = HexToRgba("#676767");       // Hovered button
+            public static readonly Color ButtonHover = HexToRgba("#444444");       // Hovered button
             public static readonly Color ButtonPressed = HexToRgba("#46607C");     // Pressed button
             public static readonly Color ButtonDisabled = HexToRgba("#404040");    // Disabled button
             
             // List Items
-            public static readonly Color ListItemNormal = HexToRgba("#303030");    // Normal list item
+            public static readonly Color ListItemNormal = HexToRgba("#3F3F3F");    // Normal list item
             public static readonly Color ListItemHover = HexToRgba("#383838");     // Hovered list item
-            public static readonly Color ListItemSelected = HexToRgba("#2D3B55");  // Selected list item
-            public static readonly Color ListItemAlt = HexToRgba("#262626");       // Alternating list item
+            public static readonly Color ListItemSelected = HexToRgba("#2B5D88");  // Selected list item
+            public static readonly Color ListItemAlt = HexToRgba("#383838");       // Alternating list item
             
             // Toolbar
             public static readonly Color ToolbarBackground = HexToRgba("#292929"); // Toolbar background
@@ -67,10 +67,10 @@ namespace Hierarchy.Libraries {
             public static readonly Color ButtonDisabled = HexToRgba("#F0F0F0");    // Disabled button
             
             // List Items
-            public static readonly Color ListItemNormal = HexToRgba("#FCFCFC");    // Normal list item
+            public static readonly Color ListItemNormal = HexToRgba("#C8C8C8");    // Normal list item
             public static readonly Color ListItemHover = HexToRgba("#F0F0F0");     // Hovered list item
-            public static readonly Color ListItemSelected = HexToRgba("#D8E5F9");  // Selected list item
-            public static readonly Color ListItemAlt = HexToRgba("#F5F5F5");       // Alternating list item
+            public static readonly Color ListItemSelected = HexToRgba("#3A72B0");  // Selected list item
+            public static readonly Color ListItemAlt = HexToRgba("#CACACA");       // Alternating list item
             
             // Toolbar
             public static readonly Color ToolbarBackground = HexToRgba("#E5E5E5"); // Toolbar background
@@ -171,6 +171,17 @@ namespace Hierarchy.Libraries {
         /// <returns>Color with adjusted alpha</returns>
         public static Color WithAlpha(Color color, float alpha) {
             return new Color(color.r, color.g, color.b, alpha);
+        }
+        
+        /// <summary>
+        /// Reduces the alpha of a color by a percentage
+        /// </summary>
+        /// <param name="color">Original color</param>
+        /// <param name="percentage">Percentage to reduce by (0-1)</param>
+        /// <returns>Color with reduced alpha</returns>
+        public static Color ReduceAlpha(Color color, float percentage) {
+            float newAlpha = color.a * (1f - percentage);
+            return new Color(color.r, color.g, color.b, newAlpha);
         }
     }
 }

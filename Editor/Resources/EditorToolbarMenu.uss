@@ -4,7 +4,7 @@
 
 .editor-toolbar-menu:active,
 .editor-toolbar-menu.menu-open {
-    background-color: var(--unity-colors-button-background-hover_pressed);
+    background-color: var(--unity-colors-button-background-pressed);
 }
 
 .editor-toolbar-menu {

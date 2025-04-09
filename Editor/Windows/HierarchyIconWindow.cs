@@ -1,5 +1,7 @@
-﻿namespace Unity_Editor_Hierarchy.Editor.Windows {
-    public class HierarchyIconWindow {
-        
-    }
+using Hierarchy;
+using UnityEngine;
+
+public class HierarchyIconWindow : InstancedWindow<HierarchyIconWindow> {
+    
 }
+ 

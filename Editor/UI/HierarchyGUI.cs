@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using Hierarchy.Libraries;
+using Hierarchy.GUI;
 using Hierarchy.Utils;
 using UnityEditor;
 using UnityEngine;
 
 
-namespace Hierarchy.GUI {
+namespace Hierarchy {
     public class HierarchyGUI : IDisposable {
         private readonly EditorWindow m_window;
         private readonly int m_windowId;
@@ -68,8 +68,6 @@ namespace Hierarchy.GUI {
 
             // Create our custom header gui with toolkit
             m_toolbarGUI.CreateGUI(K_TOP_BAR_HEIGHT, K_FAVORITES_BAR_HEIGHT);
-
-            m_shortcutHandler.RegisterPreferenceShortcut("Show Something", @event => { Debug.Log("Show Something"); });
         }
 
         public void OnHierarchyGUI() {
@@ -78,7 +76,7 @@ namespace Hierarchy.GUI {
                 return;
             }
 
-            var favoritesVisible = m_toolbarGUI.IsFavoritesVisible;
+            var favoritesVisible = m_toolbarGUI.IsBookmarksVisible;
             float topGap = K_TOP_BAR_HEIGHT + (favoritesVisible ? K_FAVORITES_BAR_HEIGHT : 0);
 
             float defaultTopBarHeight = 21f;
@@ -105,7 +103,6 @@ namespace Hierarchy.GUI {
         }
 
         private void OnRowGUI(int instanceId, Rect selectionRect) {
-            if (m_window == null) return;
             m_instanceRects[instanceId] = selectionRect;
             m_rowGUI.OnGUI(instanceId, selectionRect);
         }
