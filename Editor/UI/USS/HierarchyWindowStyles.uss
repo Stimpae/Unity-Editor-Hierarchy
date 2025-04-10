@@ -49,9 +49,7 @@
 
 .palette-container{
     align-items: center;
-    margin-left: 8px;
     flex-direction: row;
-    flex-grow: 1;
 }
 
 .palette-row{
