@@ -2,13 +2,12 @@
 using Hierarchy.Utils;
 using UnityEngine;
 using UnityEditor;
+using UnityEngine.UIElements;
 
 namespace Hierarchy {
     public abstract class InstancedWindow<T> : EditorWindow where T : EditorWindow {
         // Static reference to the instance
         protected static T instance;
-        
-        protected Action OnClose;
         
         // Public accessor with lazy initialization
         public static T Instance {
@@ -35,12 +34,21 @@ namespace Hierarchy {
         /// </summary>
         /// <param name="position"></param>
         public virtual void ShowPopup(Vector2 position) {
-            instance.ShowPopup();
-            instance.position = instance.position.SetPosition(position).SetSize(200, 150);
+            instance.ShowPopup(); ;
             instance.Focus();
-            
         }
-        
+
+        /// <summary>
+        /// 
+        /// </summary>
+        protected virtual void CreateGUI() {
+            VisualElement parentRoot = rootVisualElement.parent;
+            parentRoot.style.borderBottomWidth = 1;
+            parentRoot.style.borderLeftWidth = 1;
+            parentRoot.style.borderRightWidth = 1;
+            parentRoot.style.borderTopWidth = 1;
+        }
+
         public virtual void ShowWindow(string title) {
             instance.Show();
             instance.titleContent = new GUIContent(title);

@@ -101,7 +101,8 @@ namespace Hierarchy {
 
         [MenuItem(BASE_MENU_PATH + "Open Hierarchy Manager", false, 400)]
         private static void OpenHierarchyManager() {
-            HierarchyManagerWindow.Instance.ShowWindow("Hierarchy Manager");
+            HierarchyManagerWindow window = (HierarchyManagerWindow)EditorWindow.GetWindow(typeof(HierarchyManagerWindow));
+            window.Show();
         }
 
         [MenuItem(BASE_MENU_PATH + "Recompile Scripts", false, 500)]

@@ -86,6 +86,8 @@ namespace Hierarchy {
         }
 
         private static void CheckWindowsToRemove() {
+            _eventHandler.ProcessEvent();
+            
             var windows = GetAllHierarchyWindows().ToList();
             var windowsToRemove = HierarchyGuIs.Keys.Except(windows).ToList();
             foreach (var window in windowsToRemove) {
@@ -128,6 +130,7 @@ namespace Hierarchy {
         
         private static void UpdateHierarchyWindow(EditorWindow hierarchyWindow) {
             if (hierarchyWindow == null) return;
+            if (!hierarchyWindow.hasFocus) return;
             
             try {
                 var hostView = hierarchyWindow.GetMemberValue("m_Parent");
@@ -143,7 +146,6 @@ namespace Hierarchy {
         
         private static void HandleGUI(EditorWindow hierarchyWindow) {
             try {
-                _eventHandler.ProcessEvent();
                 if (!HierarchyGuIs.TryGetValue(hierarchyWindow, out var gui) || gui == null) {
                     // Only create if null or missing
                     gui = new HierarchyGUI(hierarchyWindow, _eventHandler);

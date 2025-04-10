@@ -5,9 +5,10 @@ using UnityEngine.UIElements;
 using UnityEditor.UIElements;
 using System.Collections.Generic;
 using Hierarchy.Data;
+using Pastime_Hierarchy.Editor.UI.UIElements;
 
 namespace Hierarchy {
-    public class HierarchyManagerWindow : InstancedWindow<HierarchyManagerWindow> {
+    public class HierarchyManagerWindow : EditorWindow {
         public void CreateGUI() {
             // Get the root element
             VisualElement root = rootVisualElement;
@@ -84,7 +85,7 @@ namespace Hierarchy {
             paletteTab.label = "Palette";
             paletteTab.contentContainer.Add(CreatePaletteTabContent());
             tabView.Add(paletteTab);
-            
+
             // 5. Rules Tab
             var iconTab = new Tab();
             iconTab.name = "IconTab";
@@ -98,8 +99,8 @@ namespace Hierarchy {
             rulesTab.label = "Rules";
             rulesTab.contentContainer.Add(CreateRulesTabContent());
             tabView.Add(rulesTab);
-            
-            
+
+
             // 4. Settings Tab
             var settingsTab = new Tab();
             settingsTab.name = "SettingsTab";
@@ -111,213 +112,224 @@ namespace Hierarchy {
         private VisualElement CreateIconTabContent() {
             var container = new ScrollView();
             container.style.flexGrow = 1;
-            
+
             return container;
         }
 
         private ListView _colorRowsListView;
         private ListView _iconRowsListView;
+        
+        
 
         private VisualElement CreatePaletteTabContent() {
-            var container = new ScrollView();
-            container.style.flexGrow = 1;
+            var container = new ScrollView {
+                style = {
+                    flexGrow = 1
+                }
+            };
 
-            // Colors section
-            var colorsFoldout = CreateFoldout("Colours Pallete");
+            var colorsFoldout = CreateFoldout("Colours Palette");
             container.Add(colorsFoldout);
 
-            // Create color rows ListView
-            _colorRowsListView = new ListView();
-            _colorRowsListView.name = "ColorRowsListView";
-            _colorRowsListView.showAlternatingRowBackgrounds = AlternatingRowBackground.None;
-            _colorRowsListView.reorderable = true; // Allow reordering
-            _colorRowsListView.reorderMode = ListViewReorderMode.Animated;
-            _colorRowsListView.fixedItemHeight = 32;
-            
-            // Create a horizontal scrolling container for each row
-            _colorRowsListView.makeItem = () => {
-                var row = new VisualElement();
-                row.style.flexDirection = FlexDirection.Row;
-                row.style.flexGrow = 1;
-                row.AddToClassList("palette-row");
-                return row;
-            };
 
-            // Bind each row to the data
-            _colorRowsListView.bindItem = (element, index) => {
-                var row = element;
-                row.Clear();
+            _colorRowsListView = new ListView {
+                name = "ColorRowsListView",
+                showAlternatingRowBackgrounds = AlternatingRowBackground.None,
+                reorderable = true,
+                reorderMode = ListViewReorderMode.Animated,
+                fixedItemHeight = 22,
+                makeItem = () => {
+                    var row = new VisualElement();
+                    row.AddToClassList("palette-row");
 
-                if (index >= 0 && index < HierarchyPaletteData.instance.ColorRows.Count) {
-                    var rowData = HierarchyPaletteData.instance.ColorRows[index];
+                    // Register hover events for the entire row
+                    row.RegisterCallback<MouseEnterEvent>(evt => {
+                        var addBtn = row.Q(className: "palette-add-item-button");
+                        if (addBtn != null) {
+                            addBtn.style.display = DisplayStyle.Flex;
+                        }
+                    });
 
-                    // Add each color in this row
-                    var colorsContainer = new VisualElement();
-                    colorsContainer.style.flexDirection = FlexDirection.Row;
-                    colorsContainer.style.flexGrow = 1;
-                    colorsContainer.AddToClassList("palette-container");
+                    row.RegisterCallback<MouseLeaveEvent>(evt => {
+                        var addBtn = row.Q(className: "palette-add-item-button");
+                        if (addBtn != null) {
+                            addBtn.style.display = DisplayStyle.None;
+                        }
+                    });
 
-                    for (int i = 0; i < rowData.colors.Count; i++) {
-                        int colorIndex = i; // Capture for lambda
-                        var colorItem = CreateColorItem(index, colorIndex, rowData.colors[i]);
-                        colorsContainer.Add(colorItem);
-                    }
-                    
-                    if (rowData.colors.Count < 8) {
-                        // Add button to add new color
-                        var addColorButton = new EditorToolbarButton(() => {
-                            rowData.AddColor(Color.white);
+                    return row;
+                },
+                bindItem = (element, index) => {
+                    var row = element;
+                    row.Clear();
+
+                    if (index >= 0 && index < HierarchyPaletteData.instance.ColorRows.Count) {
+                        var rowData = HierarchyPaletteData.instance.ColorRows[index];
+
+                        // Create the container for all row elements
+                        var rowContainer = new VisualElement();
+                        rowContainer.style.flexDirection = FlexDirection.Row;
+                        rowContainer.style.flexGrow = 1;
+
+                        // Create delete button as the first element
+                        var removeColorRowButton = new EditorToolbarButton(() => {
+                            HierarchyPaletteData.instance.RemoveColorRow(index);
                             RefreshColorRows();
                         });
-                        addColorButton.AddIcon("CreateAddNew");
-                        addColorButton.AddToClassList("palette-add-item-button");
-                        addColorButton.SetIconSize(12, 12);
-                        colorsContainer.Add(addColorButton); 
-                    }
-                    
-                    // Add button to remove color row
-                    var removeColorRowButton = new EditorToolbarButton(() => {
-                        HierarchyPaletteData.instance.RemoveColorRow(index);
-                        RefreshColorRows();
-                    });
-                    
-                    removeColorRowButton.AddIcon("Toolbar Minus");
-                    removeColorRowButton.SetIconSize(12, 12);
-                    removeColorRowButton.AddToClassList("palette-remove-button");
-                    removeColorRowButton.tooltip = "Remove color row";
-                    colorsContainer.Add(removeColorRowButton);
-                    
-                    row.Add(colorsContainer);
-                }
-            };
-            
-            _colorRowsListView.itemIndexChanged += (targetIndex, sourceIndex) => {
-                Debug.Log($"Item moved from {sourceIndex} to {targetIndex}");
-                HierarchyPaletteData.instance.MoveColorRow(sourceIndex, targetIndex);
-                
-                // Force the ListView to rebuild
-                _colorRowsListView.Rebuild();
-            };
-            
-            _colorRowsListView.itemsSource = HierarchyPaletteData.instance.ColorRows;
-            colorsFoldout.Add(_colorRowsListView);
-            
-            var addColorRowButtonContainer = new VisualElement();
-            addColorRowButtonContainer.AddToClassList("palette-add-button-container");
+                        removeColorRowButton.AddIcon("Toolbar Minus");
+                        removeColorRowButton.SetIconSize(12, 12);
+                        removeColorRowButton.AddToClassList("palette-remove-button");
+                        removeColorRowButton.tooltip = "Remove color row";
 
-            var addColorRowButton = new EditorToolbarButton(() => {
+
+                        // Add the delete button first
+                        rowContainer.Add(removeColorRowButton);
+
+                        // Create container for colors
+                        var colorsContainer = new VisualElement();
+                        colorsContainer.AddToClassList("palette-container");
+
+                        // Add existing colors
+                        for (int i = 0; i < rowData.colors.Count; i++) {
+                            int colorIndex = i;
+                            var colorItem = CreateColorItem(index, colorIndex, rowData.colors[i]);
+                            colorsContainer.Add(colorItem);
+                        }
+
+                        // Create add color button (visible on hover)
+                        if (rowData.colors.Count < 10) {
+                            var addColorButton = new EditorToolbarButton(() => {
+                                rowData.AddColor(Color.white);
+                                RefreshColorRows();
+                            });
+                            addColorButton.AddIcon("CreateAddNew");
+                            addColorButton.AddToClassList("palette-add-item-button");
+                            addColorButton.SetIconSize(12, 12);
+                            colorsContainer.Add(addColorButton);
+
+                            addColorButton.style.display = DisplayStyle.None;
+                        }
+
+                        // Add colors container to the row
+                        rowContainer.Add(colorsContainer);
+                        row.Add(rowContainer);
+
+                        // Store row index as user data for hover handling
+                        row.userData = index;
+                    }
+                },
+                itemsSource = HierarchyPaletteData.instance.ColorRows
+            };
+
+            colorsFoldout.Add(_colorRowsListView);
+
+            var addColorToolbar = new AddRemoveToolbar(() => {
                 HierarchyPaletteData.instance.AddColorRow();
                 RefreshColorRows();
-            });
-
-            addColorRowButton.AddIcon("CreateAddNew");
-            addColorRowButton.SetIconSize(14, 14);
-            addColorRowButton.AddToClassList("palette-add-button");
-            addColorRowButtonContainer.Add(addColorRowButton);
-
-            colorsFoldout.Add(addColorRowButtonContainer);
+            }, null);
+            addColorToolbar.ShowRemoveButton = false;
+            
+            colorsFoldout.Add(addColorToolbar);
 
 
-            /*// Icons section
             var iconsFoldout = CreateFoldout("Icons Palette");
             container.Add(iconsFoldout);
-            
-            _iconRowsListView = new ListView();
-            _iconRowsListView.name = "IconRowsListView";
-            _iconRowsListView.showAlternatingRowBackgrounds = AlternatingRowBackground.None;
-            _iconRowsListView.reorderable = true; // Allow reordering
-            _iconRowsListView.reorderMode = ListViewReorderMode.Animated;
-            _iconRowsListView.fixedItemHeight = 28;
-            
-            _iconRowsListView.makeItem = () => {
-                var row = new VisualElement();
-                row.style.flexDirection = FlexDirection.Row;
-                row.style.flexGrow = 1;
-                row.AddToClassList("palette-row");
-                return row;
-            };
-            
-            _iconRowsListView.bindItem = (element, index) => {
-                var row = element;
-                row.Clear();
 
-                if (index >= 0 && index < HierarchyPaletteData.instance.IconRows.Count) {
-                    var rowData = HierarchyPaletteData.instance.IconRows[index];
+            _iconRowsListView = new ListView {
+                name = "IconRowsListView",
+                showAlternatingRowBackgrounds = AlternatingRowBackground.None,
+                reorderable = true,
+                reorderMode = ListViewReorderMode.Animated,
+                fixedItemHeight = 22,
+                makeItem = () => {
+                    var row = new VisualElement();
+                    row.AddToClassList("palette-row");
 
-                    // Add each icon in this row
-                    var iconsContainer = new VisualElement();
-                    iconsContainer.style.flexDirection = FlexDirection.Row;
-                    iconsContainer.style.flexGrow = 1;
-                    iconsContainer.AddToClassList("palette-container");
+                    // Register hover events for the entire row
+                    row.RegisterCallback<MouseEnterEvent>(evt => {
+                        var addBtn = row.Q(className: "palette-add-item-button");
+                        if (addBtn != null) {
+                            addBtn.style.display = DisplayStyle.Flex;
+                        }
+                    });
 
-                    for (int i = 0; i < rowData.iconPaths.Count; i++) {
-                        int iconIndex = i; // Capture for lambda
-                        var iconItem = CreateIconItem(index, iconIndex, rowData.iconPaths[i]);
-                        iconsContainer.Add(iconItem);
+                    row.RegisterCallback<MouseLeaveEvent>(evt => {
+                        var addBtn = row.Q(className: "palette-add-item-button");
+                        if (addBtn != null) {
+                            addBtn.style.display = DisplayStyle.None;
+                        }
+                    });
+
+                    return row;
+                },
+                bindItem = (element, index) => {
+                    var row = element;
+                    row.Clear();
+
+                    if (index >= 0 && index < HierarchyPaletteData.instance.IconRows.Count) {
+                        var rowData = HierarchyPaletteData.instance.IconRows[index];
+
+                        // Create the container for all row elements
+                        var rowContainer = new VisualElement();
+                        rowContainer.style.flexDirection = FlexDirection.Row;
+                        rowContainer.style.flexGrow = 1;
+
+                        // Create delete button as the first element
+                        var removeIconRowButton = new EditorToolbarButton(() => {
+                            HierarchyPaletteData.instance.RemoveIconRow(index);
+                            RefreshIconRows();
+                        });
+                        removeIconRowButton.AddIcon("Toolbar Minus");
+                        removeIconRowButton.SetIconSize(12, 12);
+                        removeIconRowButton.AddToClassList("palette-remove-button");
+                        removeIconRowButton.tooltip = "Remove icon row";
+
+
+                        // Add the delete button first
+                        rowContainer.Add(removeIconRowButton);
+
+                        // Create container for icons
+                        var iconsContainer = new VisualElement();
+                        iconsContainer.AddToClassList("palette-container");
+
+                        // Add existing icons
+                        for (int i = 0; i < rowData.iconPaths.Count; i++) {
+                            int iconIndex = i;
+                            var iconItem = CreateIconItem(index, iconIndex, rowData.iconPaths[i]);
+                            iconsContainer.Add(iconItem);
+                        }
+
+                        // Create add icon button (visible on hover)
+                        if (rowData.iconPaths.Count < 10) {
+                            var addIconButton = new EditorToolbarButton(() => {
+                                OpenIconWindow(rowData);
+                            });
+                            addIconButton.AddIcon("CreateAddNew");
+                            addIconButton.AddToClassList("palette-add-item-button");
+                            addIconButton.SetIconSize(12, 12);
+                            iconsContainer.Add(addIconButton);
+                        }
+
+                        // Add icons container to the row
+                        rowContainer.Add(iconsContainer);
+                        row.Add(rowContainer);
+
+                        // Store row index as user data for hover handling
+                        row.userData = index;
                     }
-
-                    // Add button to add new icon
-                    var addIconButton = new EditorToolbarButton(() => {
-                        rowData.AddIcon("d_UnityEditor.SceneHierarchyWindow");
-                        RefreshIconRows();
-                    }) { text = "+" };
-                    addIconButton.AddToClassList("palette-add-item-button");
-                    iconsContainer.Add(addIconButton);
-                    row.Add(iconsContainer);
-                    
-                    //addIconButton.style.display = DisplayStyle.None;
-                }
-
-                // Always register callbacks, even if the row is empty
-                element.RegisterCallback<MouseOverEvent>(evt => {
-                    var addIconButton = element.Q<EditorToolbarButton>(className: "palette-add-item-button");
-                    if (addIconButton != null) {
-                        addIconButton.style.display = DisplayStyle.Flex;
-                    }
-                });
-
-                element.RegisterCallback<MouseOutEvent>(evt => {
-                    var addIconButton = element.Q<EditorToolbarButton>(className: "palette-add-item-button");
-                    if (addIconButton != null) {
-                        addIconButton.style.display = DisplayStyle.None;
-                    }
-                });
+                },
+                itemsSource = HierarchyPaletteData.instance.IconRows
             };
-            
-            _iconRowsListView.itemIndexChanged += (targetIndex, sourceIndex) => {
-                HierarchyPaletteData.instance.MoveIconRow(sourceIndex, targetIndex);
-            };
-
-            _iconRowsListView.itemsSource = HierarchyPaletteData.instance.IconRows;
 
             iconsFoldout.Add(_iconRowsListView);
 
-            var iconButtonContainer = new Toolbar();
-            iconButtonContainer.AddToClassList("palette-button-container");
-            iconsFoldout.Add(iconButtonContainer);
-            
-            var addIconRowButton = new EditorToolbarButton(() => {
+            var addIconToolbar = new AddRemoveToolbar(() => {
                 HierarchyPaletteData.instance.AddIconRow();
                 RefreshIconRows();
-            });
-            addIconRowButton.AddIcon("CreateAddNew");
-            addIconRowButton.SetIconSize(14, 14);
+            }, null);
+            addIconToolbar.ShowRemoveButton = false;
 
-            addIconRowButton.AddToClassList("palette-add-button");
-            iconButtonContainer.Add(addIconRowButton);
-
-            var removeIconRowButton = new EditorToolbarButton(() => {
-                if (_iconRowsListView.selectedIndex >= 0) {
-                    HierarchyPaletteData.instance.RemoveIconRow(_iconRowsListView.selectedIndex);
-                    RefreshIconRows();
-                }
-            });
-
-            removeIconRowButton.AddIcon("Toolbar Minus");
-            removeIconRowButton.SetIconSize(14, 14);
-            removeIconRowButton.tooltip = "Remove selected icon row";
-            removeIconRowButton.AddToClassList("palette-remove-button");
-            iconButtonContainer.Add(removeIconRowButton);*/
+            iconsFoldout.Add(addIconToolbar);
 
             return container;
         }
@@ -363,57 +375,32 @@ namespace Hierarchy {
             var container = new VisualElement();
             container.name = $"IconItem_{rowIndex}_{iconIndex}";
             container.AddToClassList("palette-item");
-
-            // Create the icon button
-            var iconButton = new Button(() => {
-                // Open icon selector (simplified version)
-                OpenIconSelector(rowIndex, iconIndex);
-            });
-            iconButton.AddToClassList("icon-button");
-
+            
             // Try to load the icon
             var iconContent = EditorGUIUtility.IconContent(iconPath);
             if (iconContent != null && iconContent.image != null) {
                 var iconImage = new Image();
                 iconImage.image = iconContent.image;
                 iconImage.AddToClassList("palette-icon-image");
-                iconButton.Add(iconImage);
-            }
-            else {
-                iconButton.text = "?";
+                container.Add(iconImage);
             }
 
             // Add context menu
-            iconButton.AddManipulator(new ContextualMenuManipulator(evt => {
-                evt.menu.AppendAction("Select Icon", action => { OpenIconSelector(rowIndex, iconIndex); });
-
+            container.AddManipulator(new ContextualMenuManipulator(evt => {
                 evt.menu.AppendAction("Remove Icon", action => {
                     HierarchyPaletteData.instance.IconRows[rowIndex].RemoveIcon(iconIndex);
                     RefreshIconRows();
                 });
             }));
-
-            container.Add(iconButton);
-
+            
             return container;
         }
 
-        private void OpenIconSelector(int rowIndex, int iconIndex) {
-            // For demo purposes, just rotate through some common icons
-            string[] commonIcons = new string[] {
-                "d_UnityEditor.SceneHierarchyWindow",
-                "d_Prefab Icon",
-                "d_Folder Icon",
-                "d_GameObject Icon",
-                "d_Camera Icon",
-                "d_Light Icon"
-            };
-
-            // For a real implementation, you would create a proper icon picker window
-
-            int randomIndex = UnityEngine.Random.Range(0, commonIcons.Length);
-            HierarchyPaletteData.instance.IconRows[rowIndex].UpdateIcon(iconIndex, commonIcons[randomIndex]);
-            RefreshIconRows();
+        private void OpenIconWindow(HierarchyPaletteData.IconRow rowData) {
+            var iconWindowPosition = GUIUtility.GUIToScreenPoint(Event.current.mousePosition);
+            HierarchyIconWindow.Instance.ShowPopup(iconWindowPosition);
+             
+            // we set the row data for the what ever window we select
         }
 
         private void RefreshColorRows() {
@@ -451,9 +438,66 @@ namespace Hierarchy {
         }
 
         private VisualElement CreateSettingsTabContent() {
-            var container = new ScrollView();
-            container.style.flexGrow = 1;
+            var container = new VisualElement { style = { flexGrow = 1 } };
+
+            var settingsFoldout = CreateFoldout("Search Filters");
+            container.Add(settingsFoldout);
+
+            var multiColumnListView = new MultiColumnListView {
+                name = "SearchFiltersListView",
+                itemsSource = HierarchySettings.instance.SearchFilters,
+                showBorder = true,
+                reorderable = false
+            };
+
+            multiColumnListView.columns.Add(new Column {
+                title = "Filter Name",
+                name = "name",
+                makeCell = () => new TextField { name = "nameField", style = { flexGrow = 1 } },
+                bindCell = (element, index) => BindTextField(element, index, "nameField",
+                    filter => filter.Name, (filter, value) => filter.Name = value),
+                stretchable = true
+            });
+
+            multiColumnListView.columns.Add(new Column {
+                title = "Filter Text",
+                name = "filterText",
+                makeCell = () => new TextField { name = "filterTextField", style = { flexGrow = 1 } },
+                bindCell = (element, index) => BindTextField(element, index, "filterTextField",
+                    filter => filter.FilterText, (filter, value) => filter.FilterText = value),
+                stretchable = true
+            });
+
+            settingsFoldout.Add(multiColumnListView);
+
+            var toolbar = new AddRemoveToolbar(() => {
+                HierarchySettings.instance.SearchFilters.Add(new HierarchySearchFilter("New Filter", "t:GameObject"));
+                HierarchySettings.instance.Save();
+                multiColumnListView.Rebuild();
+            }, () => {
+                var selected = multiColumnListView.selectedIndex;
+                if (selected >= 0 && selected < HierarchySettings.instance.SearchFilters.Count) {
+                    HierarchySettings.instance.SearchFilters.RemoveAt(selected);
+                    HierarchySettings.instance.Save();
+                    multiColumnListView.Rebuild();
+                }
+            });
+
+            settingsFoldout.Add(toolbar);
             return container;
+        }
+
+        private void BindTextField(VisualElement element, int index, string fieldName,
+            Func<HierarchySearchFilter, string> getValue, Action<HierarchySearchFilter, string> setValue) {
+            var textField = element.Q<TextField>(fieldName);
+            if (index >= 0 && index < HierarchySettings.instance.SearchFilters.Count) {
+                var filter = HierarchySettings.instance.SearchFilters[index];
+                textField.SetValueWithoutNotify(getValue(filter));
+                textField.RegisterValueChangedCallback(evt => {
+                    setValue(filter, evt.newValue);
+                    HierarchySettings.instance.Save();
+                });
+            }
         }
 
         private VisualElement CreateRulesTabContent() {

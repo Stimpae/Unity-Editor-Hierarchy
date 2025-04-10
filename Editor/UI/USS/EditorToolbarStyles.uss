@@ -1,1 +1,17 @@
-VisualElement {}
+.add-toolbar__button{
+}
+
+.remove-toolbar__button{
+}
+
+.add-remove-toolbar__container{
+    flex-direction: row;
+    margin-left: 4px;
+}
+
+.add-remove-toolbar{
+    height: 24px;
+    border-top-width: 1px;
+    border-bottom-width: 0;
+    border-top-color: var(--unity-colors-inspector_titlebar-border);
+}

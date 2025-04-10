@@ -5,10 +5,9 @@ using UnityEngine.UIElements;
 
 namespace Hierarchy.Elements {
     public class EditorToolbarToggle : ToolbarToggle {
-        private string m_prefsKey;
-        private bool m_defaultValue;
-        private bool m_initialized = false;
-        private System.Action<bool> m_onValueChanged;
+        private readonly string m_prefsKey;
+        private readonly bool m_defaultValue;
+        private readonly System.Action<bool> m_onValueChanged;
         private Image m_iconImage;
 
         public EditorToolbarToggle(string key, bool defaultValue = true, System.Action<bool> onValueChanged = null) {

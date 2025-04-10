@@ -1,59 +1,69 @@
-/* Main Styles for Hierarchy Manager Window */
-
-/* Root Element */
-.unity-base-field {
-    margin-top: 2px;
-    margin-bottom: 2px;
+#SettingsTab .unity-scroll-view{
+    padding: 0;
 }
 
-/* Tab View Styles */
-#TabView {
-    border-width: 0;
+#SettingsTab .unity-list-view{
+    margin: 4px 4px 4px;
 }
 
-.unity-list-view{
-    margin: 8px 8px 4px;
+#SettingsTab .unity-multi-column-header__column{
+    border-right-width: 0;
 }
 
-.unity-list-view__reorderable-handle {
+#SettingsTab .unity-scroll-view__content-and-vertical-scroll-container{
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+#PaletteTab  .unity-list-view{
+    margin: 4px 4px 4px;
+}
+
+#PaletteTab  .unity-list-view__reorderable-handle {
+    display: none;
     justify-content: center;
     padding: 0;
 }
 
-.unity-list-view__reorderable-item{
+#PaletteTab  .unity-list-view__reorderable-item{
     border-radius: 6px;
 }
 
-.unity-list-view__reorderable-item__container {
+#PaletteTab  .unity-list-view__reorderable-item__container {
     padding: 0;
     justify-content: center;
 }
 
-.unity-collection-view__item--selected {
-    background-color: var(--unity-colors-inspector_titlebar-border);
+#PaletteTab  .unity-list-view__item:checked{
+    background-color:  rgba(255,255,255,0);
 }
 
-.unity-list-view__item:checked{
-    background-color: var(--unity-colors-inspector_titlebar-border);
+#PaletteTab .unity-list-view__item:checked:hover{
+    background-color: var(--unity-colors-highlight-background-hover);
 }
 
-.unity-list-view__item:checked:hover{
-    background-color: var(--unity-colors-inspector_titlebar-border);
-}
-
-.unity-list-view__item:hover{
+#PaletteTab .unity-list-view__item:hover{
     background-color: var(--unity-colors-highlight-background-hover);
 }
 
 
 .palette-container{
+    align-items: center;
+    margin-left: 8px;
+    flex-direction: row;
+    flex-grow: 1;
+}
+
+.palette-row{
+    flex-direction: row;
+    flex-grow: 1;
     margin-left: 8px;
 }
+
 .palette-item{
-    height: 23px;
-    width: 23px;
-    min-width: 23px;
-    min-height: 23px;
+    justify-content: center;
+    width: 22px;
+    min-width: 22px;
     border-radius: 2px;
 }
 
@@ -61,21 +71,14 @@
     background-color: var(--unity-colors-button-background-hover);
 }
 
-.palette-add-button {
-    height: 18px;
-    width: 18px;
-}
-
-.palette-add-button-container {
-    padding-left: 9px;
-    padding-bottom: 1px;
-    padding-top: 1px;
-    background-color: var(--unity-colors-inspector_titlebar-background);
-    border-top-width: 1;
-    border-top-color: var(--unity-colors-inspector_titlebar-border);
+.palette-icon-image{
+    align-self: center;
+    width: 16px;
+    height: 16px;
 }
 
 .unity-color-field{
+    justify-content: center;
     flex-grow: 1;
 }
 

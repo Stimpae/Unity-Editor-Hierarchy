@@ -88,11 +88,7 @@ namespace Hierarchy.Data {
                 }
             }
         }
-
-        // Events for UI updates
-        public event Action ColorsChanged;
-        public event Action IconsChanged;
-
+        
         [SerializeField] private List<ColorRow> colorRows = new List<ColorRow>();
         [SerializeField] private List<IconRow> iconRows = new List<IconRow>();
 
@@ -104,7 +100,6 @@ namespace Hierarchy.Data {
         public void AddColorRow()
         {
             colorRows.Add(new ColorRow());
-            ColorsChanged?.Invoke();
             Save(true);
         }
         
@@ -113,38 +108,14 @@ namespace Hierarchy.Data {
             if (index >= 0 && index < colorRows.Count)
             {
                 colorRows.RemoveAt(index);
-                ColorsChanged?.Invoke();
                 Save(true);
             }
         }
         
-        public void MoveColorRow(int sourceIndex, int targetIndex)
-        {
-            if (sourceIndex < 0 || sourceIndex >= colorRows.Count ||
-                targetIndex < 0 || targetIndex >= colorRows.Count ||
-                sourceIndex == targetIndex)
-                return;
-        
-            // Get the row to move
-            var rowToMove = colorRows[sourceIndex];
-    
-            // Remove from source position
-            colorRows.RemoveAt(sourceIndex);
-    
-            // Insert at target position
-            colorRows.Insert(targetIndex, rowToMove);
-    
-            // Save changes
-            Save(true);
-    
-            // Notify UI of changes
-            ColorsChanged?.Invoke();
-        }
         
         public void AddIconRow()
         {
             iconRows.Add(new IconRow());
-            IconsChanged?.Invoke();
             Save(true);
         }
         
@@ -153,23 +124,10 @@ namespace Hierarchy.Data {
             if (index >= 0 && index < iconRows.Count)
             {
                 iconRows.RemoveAt(index);
-                IconsChanged?.Invoke();
                 Save(true);
             }
         }
         
-        public void MoveIconRow(int fromIndex, int toIndex)
-        {
-            if (fromIndex >= 0 && fromIndex < iconRows.Count &&
-                toIndex >= 0 && toIndex < iconRows.Count)
-            {
-                var item = iconRows[fromIndex];
-                iconRows.RemoveAt(fromIndex);
-                iconRows.Insert(toIndex, item);
-                IconsChanged?.Invoke();
-                Save(true);
-            }
-        }
 
         // Reset methods
         public void ResetColors()
@@ -194,8 +152,6 @@ namespace Hierarchy.Data {
                 new Color(0.0f, 0.5f, 0.0f), // Dark green
                 new Color(0.0f, 0.0f, 0.5f)  // Dark blue
             ));
-            
-            ColorsChanged?.Invoke();
             Save(true);
         }
         
@@ -216,31 +172,7 @@ namespace Hierarchy.Data {
                 "d_Light Icon"
             ));
             
-            IconsChanged?.Invoke();
             Save(true);
-        }
-        
-        // Initialize defaults if needed
-        public void InitializeIfEmpty()
-        {
-            bool needsSave = false;
-            
-            if (colorRows.Count == 0)
-            {
-                ResetColors();
-                needsSave = true;
-            }
-            
-            if (iconRows.Count == 0)
-            {
-                ResetIcons();
-                needsSave = true;
-            }
-            
-            if (needsSave)
-            {
-                Save(true);
-            }
         }
     }
 }

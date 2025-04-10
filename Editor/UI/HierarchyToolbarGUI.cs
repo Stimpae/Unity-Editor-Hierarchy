@@ -8,6 +8,7 @@ using UnityEngine.UIElements;
 using UnityEngine.SceneManagement;
 using System.Linq;
 using System.Reflection;
+using Hierarchy.Data;
 using Hierarchy.Libraries;
 using Pastime.Hierarchy.GUI;
 using UnityEditor.Toolbars;
@@ -23,8 +24,10 @@ namespace Hierarchy {
 
         private VisualElement m_bookmarksBar;
         private VisualElement m_toolbar;
-        
+
+        private VisualElement m_spacer;
         private ToolbarPopupSearchField m_searchField;
+        private EditorToolbarMenu m_searchFilterDropdown;
         private EditorToolbarMenu m_gameObjectDropdown;
         
         // get the editor prefs for this instead
@@ -68,45 +71,7 @@ namespace Hierarchy {
             };
             root.Add(m_toolbar);
 
-            // Left container - fixed width, no grow/shrink
-            VisualElement leftContainer = new VisualElement() {
-                style = {
-                    flexGrow = 0,
-                    flexShrink = 0,
-                    flexBasis = StyleKeyword.Auto, // Use auto as the base size
-                    width = StyleKeyword.Auto, // Let content determine width
-                    justifyContent = Justify.FlexStart,
-                    alignSelf = Align.Center
-                }
-            };
-            m_toolbar.Add(leftContainer);
-
-            // Center container - should take available space and hug the right side
-            VisualElement centerContainer = new VisualElement() {
-                style = {
-                    flexGrow = 1, // Allow it to grow to fill available space
-                    flexShrink = 0, // Don't shrink below its minimum content size
-                    justifyContent = Justify.FlexStart, // Align content to left within container
-                    height = 23,
-                    alignSelf = Align.Center,
-                }
-            };
-            m_toolbar.Add(centerContainer);
-
-            // Right container - fixed position on right
-            VisualElement rightContainer = new VisualElement() {
-                style = {
-                    flexGrow = 0,
-                    flexShrink = 0,
-                    width = StyleKeyword.Auto, // Let content determine width
-                    justifyContent = Justify.FlexEnd,
-                    flexDirection = FlexDirection.Row,
-                    marginRight = 2,
-                    marginLeft = 2,
-                }
-            };
-            m_toolbar.Add(rightContainer);
-
+            
             m_bookmarksBar = new Toolbar {
                 style = {
                     height = favoritesHeight,
@@ -130,43 +95,67 @@ namespace Hierarchy {
             m_gameObjectDropdown.AddIcon("CreateAddNew");
             m_gameObjectDropdown.SetIconSize(16,16);
             m_gameObjectDropdown.tooltip = "Create GameObject";
-            leftContainer.Add(m_gameObjectDropdown);
+            m_toolbar.Add(m_gameObjectDropdown);
+
+            m_spacer = new VisualElement();
+            m_spacer.style.flexGrow = 1;
+            m_toolbar.Add(m_spacer);
 
             m_searchField = new ToolbarPopupSearchField();
             m_searchField.RegisterValueChangedCallback(OnSearchValueChanged);
             m_searchField.style.flexShrink = 1;
             m_searchField.style.flexGrow = 1; // Allow search field to grow
+            m_searchField.style.marginRight = 0;
             m_searchField.style.width = new StyleLength(StyleKeyword.Auto); // Use auto width
-            centerContainer.Add(m_searchField);
+            m_toolbar.Add(m_searchField);
+            
+            // Create search filter dropdown
+            m_searchFilterDropdown = new EditorToolbarMenu(CreateSearchFilterOptions);
+            m_searchFilterDropdown.AddIcon("SearchQueryAsset Icon");
+            m_searchFilterDropdown.SetIconSize(13,13);
+            m_searchFilterDropdown.style.marginLeft = 0;
+            m_searchFilterDropdown.style.borderBottomLeftRadius = 0;
+            m_searchFilterDropdown.style.borderTopLeftRadius = 0;
+            m_toolbar.Add(m_searchFilterDropdown);
             
             // Create search button and save the state between hierarchy refreshes
             var searchToggle = new EditorToolbarToggle("Editor_SearchVisible_" + m_window.GetHashCode(),false, ToggleSearchToolbarVisibility);
             searchToggle.AddIcon("Search Icon");
             searchToggle.SetIconSize(16,16);
-            rightContainer.Add(searchToggle);
+            m_toolbar.Add(searchToggle);
             
             // Create favourites button and save the state between hierarchy refreshes
             var favoritesButton = new EditorToolbarToggle("Editor_FavoritesVisible_" + m_window.GetHashCode(),false, ToggleFavoritesToolbarVisibility);
             favoritesButton.AddIcon("PreMatCube");
             favoritesButton.SetIconSize(16,16);
-            rightContainer.Add(favoritesButton);
+            m_toolbar.Add(favoritesButton);
             
             // create collapse button
             var collapseButton = new EditorToolbarButton(CollapseHierarchy);
             collapseButton.AddIcon("Animation.NextKey");
             collapseButton.IconImage.style.rotate = new StyleRotate(new Rotate(new Angle(90)));
             collapseButton.SetIconSize(16,16);
-            rightContainer.Add(collapseButton);
+            m_toolbar.Add(collapseButton);
         }
         
         private void CollapseHierarchy() {
         }
 
+        private void CreateSearchFilterOptions() {
+            m_searchFilterDropdown.menu.ClearItems();
+            // Add each filter to the menu
+            foreach (var filter in HierarchySettings.instance.SearchFilters) {
+                m_searchFilterDropdown.menu.AppendAction(filter.Name, action => {
+                    m_searchField.value = filter.FilterText;
+                });
+            }
+        }
+
         private void ToggleSearchToolbarVisibility(bool isVisible) {
-            
-            
-            
             m_searchField.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            m_spacer.style.display = isVisible ? DisplayStyle.None : DisplayStyle.Flex;
+            m_searchFilterDropdown.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
+            
             if (!isVisible && !string.IsNullOrEmpty(m_searchField.value)) {
                 m_searchField.value = "";
                 ClearHierarchySearch();
@@ -176,6 +165,8 @@ namespace Hierarchy {
         private void ToggleFavoritesToolbarVisibility(bool isVisible) {
             m_bookmarksBar.style.display = isVisible ? DisplayStyle.Flex : DisplayStyle.None;
         }
+        
+       
 
         private void ShowGameObjectDropdown() {
             try {
